@@ -76,7 +76,50 @@
 
 ---
 
-## 3. Thiết Kế Cơ Sở Dữ Liệu (Database Schema)
+## 3. Thiết Kế Cơ Sở Dữ Liệu (Database Schema & ERD)
+
+```mermaid
+erDiagram
+    LEADS ||--o{ DEALS : "generates (lead_id)"
+    
+    LEADS {
+        uuid id PK
+        string external_id UK
+        string source
+        string name
+        string email
+        string phone
+        string campaign_id
+        string ad_id
+        jsonb raw_data
+        int bitrix24_id
+        int quality_score
+        string status
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    DEALS {
+        uuid id PK
+        uuid lead_id FK
+        int bitrix24_id
+        string title
+        decimal amount
+        string currency
+        string stage
+        int probability
+        string assigned_to
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CONFIGURATIONS {
+        int id PK
+        string key UK
+        jsonb value
+        timestamp updated_at
+    }
+```
 
 ### Bảng `leads`
 | Cột | Kiểu dữ liệu | Mô tả |
@@ -260,3 +303,16 @@ npm run test:cov
 2. **Cơ chế Idempotency & Replay Attack**: Mỗi request Webhook TikTok mang `event_id` duy nhất và timestamp. Hệ thống kiểm tra trùng lặp trước khi tiếp nhận và từ chối các webhook có độ lệch thời gian $> 5$ phút để ngăn chặn replay attacks.
 3. **Dead Letter Queue (DLQ)**: Khi một job xử lý thất bại sau 3 lần thử lại theo cơ chế Exponential Backoff (2s, 4s, 8s), job sẽ tự động được chuyển sang `tiktok-leads-dlq` để các kỹ sư vận hành phân tích lỗi mà không làm gián đoạn hàng đợi chính.
 4. **Excel Compatibility**: File CSV xuất ra luôn được đính kèm ký tự UTF-8 BOM (`\uFEFF`), giúp người dùng Việt Nam mở trực tiếp file báo cáo trong Microsoft Excel trên Windows/Mac mà không bao giờ bị vỡ font chữ tiếng Việt.
+
+---
+
+## 9. Hướng Dẫn Xử Lý Sự Cố (Troubleshooting & FAQs)
+
+| Vấn đề / Lỗi | Nguyên nhân | Cách khắc phục & Cơ chế tự phục hồi của hệ thống |
+| :--- | :--- | :--- |
+| **Lỗi HTTP 401 khi Webhook gửi thông báo (`im.notify.system.add`)** | Inbound Webhook của Bitrix24 chưa được bật quyền module Tin nhắn (Instant Messenger `im`). | **Cơ chế Fallback thông minh:** Hệ thống tự động bắt lỗi và chuyển nội dung thông báo thành ghi chú Lịch sử dòng thời gian CRM (`crm.timeline.comment.add`) gắn trực tiếp vào Lead và Deal, đảm bảo không bao giờ bị mất thông tin hay crash ứng dụng. |
+| **Lỗi HTTP 401: `Invalid or missing signature`** | Header `TikTok-Signature` không khớp với chữ ký HMAC-SHA256 tính từ `TIKTOK_APP_SECRET`. | 1. Khi test giả lập, sử dụng script có sẵn `npm run mock:webhook` (script tự tính hash chuẩn).<br>2. Nếu muốn tạm thời bỏ qua xác thực chữ ký khi debug: đặt `BYPASS_WEBHOOK_SIGNATURE=true` trong file `.env`. |
+| **Cảnh báo BullMQ: `Eviction policy is allkeys-lru`** | Redis cục bộ đang để cấu hình mặc định LRU thay vì `noeviction`. | Trong môi trường phát triển (Development/Testing), cảnh báo này không ảnh hưởng. Trong môi trường Production, sửa file `redis.conf`: `maxmemory-policy noeviction` để tránh Redis tự động giải phóng các job đang chờ. |
+| **Job bị lỗi khi gọi Bitrix24 bị gián đoạn mạng** | Mạng chập chờn hoặc Bitrix24 timeout. | BullMQ tự động retry 3 lần với exponential backoff. Nếu sau 3 lần vẫn lỗi, job sẽ chuyển vào `tiktok-leads-dlq`. Người dùng chỉ cần vào Web Dashboard tab **Queue & DLQ** và bấm **"Thử Lại Toàn Bộ"** khi mạng ổn định lại. |
+| **Mở file CSV trên Microsoft Excel bị lỗi font tiếng Việt** | Trình đọc Excel không nhận diện được UTF-8 nếu thiếu byte đánh dấu. | Toàn bộ dữ liệu xuất qua `GET /api/v1/reports/export?format=csv` đã được tự động gắn mã **UTF-8 BOM (`\uFEFF`)**, đảm bảo mở trực tiếp hiển thị 100% tiếng Việt chuẩn trên mọi phiên bản Excel Windows và macOS. |
+
