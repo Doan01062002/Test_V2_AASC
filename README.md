@@ -1,8 +1,9 @@
-# AASC V2 - Hệ Thống Tích Hợp CRM Bitrix24
+# AASC V2 - Tuyển Tập Bài Kiểm Tra Tích Hợp & Tự Động Hóa Bitrix24
 
 > Tuyển tập giải pháp tự động hóa tích hợp doanh nghiệp Vòng 2 Developer:
 > 1. **Bài 1**: Đồng bộ dữ liệu hai chiều giữa Google Sheets và Bitrix24 CRM.
 > 2. **Bài 2**: Tích hợp TikTok Lead Generation Ads với Bitrix24 CRM qua BullMQ Queue, Rule Engine tự động tạo Deal và Analytics Dashboard.
+> 3. **Bài 3**: Xây dựng 2 quy trình Workflow trên Bitrix24 (Quy trình nghỉ phép 3 cấp & Quy trình chi phí công tác 4 cấp) và xuất file `.bpt`.
 
 ---
 
@@ -41,6 +42,21 @@
   - Đồng bộ trạng thái chuyển đổi ngược về TikTok Events API (Conversion Events).
   - Xử lý hàng loạt (Batch Processing) phục vụ di chuyển dữ liệu lịch sử (`POST /api/v1/leads/batch`).
   - Web Dashboard SPA (`/dashboard`), Báo cáo định kỳ & Cảnh báo tự động (`/reports/scheduled-summary`, `/reports/trigger-alert`), Swagger OpenAPI (`/api/docs` & `docs/swagger.json`), và xuất báo cáo CSV UTF-8 with BOM / JSON.
+
+---
+
+### 3. Bài 3: Xây Dựng 2 Workflow Trên Bitrix24
+- **Thư mục dự án**: [`tich-hop-workflow-bitrix24/`](./tich-hop-workflow-bitrix24/)
+- **Tài liệu hướng dẫn Markdown**: [`tich-hop-workflow-bitrix24/docs/Huong_Dan_Xay_Dung_Workflow_Bitrix24.md`](./tich-hop-workflow-bitrix24/docs/Huong_Dan_Xay_Dung_Workflow_Bitrix24.md)
+- **Tài liệu mô tả Word (.docx)**: [`tich-hop-workflow-bitrix24/docs/Tai_Lieu_Mo_Ta_Workflow_Bitrix24.docx`](./tich-hop-workflow-bitrix24/docs/Tai_Lieu_Mo_Ta_Workflow_Bitrix24.docx)
+- **Thư mục lưu file export .bpt**: [`tich-hop-workflow-bitrix24/exports/`](./tich-hop-workflow-bitrix24/exports/)
+  - `NghiPhep_3Cap.bpt`: Quy trình nghỉ phép qua 3 cấp phê duyệt (Quản lý $\rightarrow$ Nhân sự $\rightarrow$ Giám đốc), có rẽ nhánh kiểm tra số ngày phép còn lại.
+  - `ChiPhiCongTac_4Cap.bpt`: Quy trình phê duyệt chi phí đi công tác qua 4 cấp (Quản lý $\rightarrow$ TP Tài chính $\rightarrow$ Phó GĐ Tài chính $\rightarrow$ Giám đốc), có kiểm tra hạn mức ngân sách và đính kèm hóa đơn/báo giá.
+- **Đặc điểm nổi bật**:
+  - Hỗ trợ xử lý từ chối tại bất kỳ cấp nào với lý do từ chối và thông báo tự động.
+  - Giao diện thân thiện, dễ nhập liệu trên Bitrix24.
+  - Lưu trữ đầy đủ lịch sử phê duyệt (Audit Trail).
+  - Dễ dàng import vào bất kỳ cổng Bitrix24 nào chỉ với 1 cú nhấp chuột.
 
 ---
 
@@ -91,4 +107,23 @@ npm run mock:webhook
 
 # 6. Chạy thử nghiệm Batch Migration (nạp dữ liệu lịch sử hàng loạt)
 npm run migrate:historical
+```
+
+---
+
+## 🚀 Hướng Dẫn Nhanh Bài 3: Workflow Trên Bitrix24
+
+```bash
+cd tich-hop-workflow-bitrix24
+
+# 1. Xem tài liệu hướng dẫn thiết lập từ A-Z:
+# -> File Markdown: docs/Huong_Dan_Xay_Dung_Workflow_Bitrix24.md
+# -> File Word:     docs/Tai_Lieu_Mo_Ta_Workflow_Bitrix24.docx
+
+# 2. Tạo lại file Word (.docx) mới nhất bất kỳ lúc nào:
+node scripts/generate-docx.js
+
+# 3. Xuất file từ Bitrix24 về máy:
+# -> Lưu NghiPhep_3Cap.bpt vào thư mục exports/
+# -> Lưu ChiPhiCongTac_4Cap.bpt vào thư mục exports/
 ```
