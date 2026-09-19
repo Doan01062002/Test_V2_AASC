@@ -20,10 +20,12 @@
 - **Kế hoạch triển khai**: [`docs/superpowers/plans/2026-09-19-tiktok-bitrix24-integration.md`](./docs/superpowers/plans/2026-09-19-tiktok-bitrix24-integration.md)
 - **Đặc điểm nổi bật**:
   - Webhook xác thực chữ ký bảo mật HMAC-SHA256 phản hồi tức thì <50ms.
-  - Hàng đợi xử lý bất đồng bộ BullMQ & Redis (Rate Limiter 2/s, Retry 3x, DLQ).
-  - Chuẩn hóa số điện thoại E.164, Email RFC 5322, Lead Quality Score (0-100 pts) và chống trùng lặp dữ liệu.
-  - Rule Engine tự động chuyển đổi Lead thành Deal trên Bitrix24, gán nhân viên phụ trách và gửi notification.
-  - Web Dashboard SPA (`/dashboard`), Swagger OpenAPI (`/api/docs`), và xuất báo cáo CSV UTF-8 with BOM.
+  - Hàng đợi xử lý bất đồng bộ BullMQ & Redis (Rate Limiter 2/s, Exponential Backoff Retry 3x, Dead Letter Queue - DLQ & Quản trị DLQ).
+  - Chuẩn hóa số điện thoại E.164, Email RFC 5322, Lead Quality Score (0-100 pts) song ngữ và chống trùng lặp dữ liệu.
+  - Rule Engine tự động chuyển đổi Lead thành Deal trên Bitrix24, gán nhân viên phụ trách, cập nhật `STATUS_ID: CONVERTED`, và ghi chú lịch sử Timeline CRM (`crm.timeline.comment.add`).
+  - Đồng bộ trạng thái chuyển đổi ngược về TikTok Events API (Conversion Events).
+  - Xử lý hàng loạt (Batch Processing) phục vụ di chuyển dữ liệu lịch sử (`POST /api/v1/leads/batch`).
+  - Web Dashboard SPA (`/dashboard`), Báo cáo định kỳ & Cảnh báo tự động (`/reports/scheduled-summary`, `/reports/trigger-alert`), Swagger OpenAPI (`/api/docs` & `docs/swagger.json`), và xuất báo cáo CSV UTF-8 with BOM / JSON.
 
 ---
 

@@ -7,6 +7,9 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { LeadEntity } from '../../database/entities/lead.entity';
 import { ConfigurationEntity } from '../../database/entities/configuration.entity';
 
+import { getQueueToken } from '@nestjs/bullmq';
+import { TIKTOK_LEADS_DLQ } from '../../queue/queue.constants';
+
 describe('TikTokLeadConsumer', () => {
   let consumer: TikTokLeadConsumer;
   let tiktokService: any;
@@ -14,8 +17,13 @@ describe('TikTokLeadConsumer', () => {
   let ruleEngineService: any;
   let leadRepo: any;
   let configRepo: any;
+  let dlqQueue: any;
 
   beforeEach(async () => {
+    dlqQueue = {
+      add: jest.fn().mockResolvedValue({ id: 'dlq-1' }),
+    };
+
     tiktokService = {
       createPendingLead: jest.fn(),
       extractLeadInfo: jest.fn().mockReturnValue({
@@ -25,6 +33,8 @@ describe('TikTokLeadConsumer', () => {
         email: 'a@example.com',
         campaignId: 'Summer',
         adId: 'Ad1',
+        formId: 'Form1',
+        formName: 'Form Contact',
         city: 'Ha Noi',
         customQuestions: [],
         rawData: {},
@@ -39,6 +49,7 @@ describe('TikTokLeadConsumer', () => {
       findLeadByEmailOrPhone: jest.fn().mockResolvedValue(null),
       createLead: jest.fn().mockResolvedValue(101),
       updateLead: jest.fn().mockResolvedValue(true),
+      addTimelineComment: jest.fn().mockResolvedValue(1),
     };
 
     ruleEngineService = {
@@ -69,6 +80,7 @@ describe('TikTokLeadConsumer', () => {
         { provide: RuleEngineService, useValue: ruleEngineService },
         { provide: getRepositoryToken(LeadEntity), useValue: leadRepo },
         { provide: getRepositoryToken(ConfigurationEntity), useValue: configRepo },
+        { provide: getQueueToken(TIKTOK_LEADS_DLQ), useValue: dlqQueue },
       ],
     }).compile();
 
@@ -94,5 +106,28 @@ describe('TikTokLeadConsumer', () => {
     expect(res.status).toBe('converted');
     expect(bitrix24Service.createLead).toHaveBeenCalled();
     expect(ruleEngineService.processLeadRules).toHaveBeenCalled();
+  });
+
+  it('should push to DLQ and mark lead failed when retries are exhausted', async () => {
+    bitrix24Service.createLead.mockRejectedValue(new Error('Bitrix24 Connection Failed'));
+
+    const job = {
+      id: 'job-fail-dlq',
+      opts: { attempts: 3 },
+      attemptsMade: 2, // 2 + 1 >= 3 (last attempt)
+      data: {
+        leadId: 'lead-1',
+        payload: { lead_data: { city: 'Da Nang' } },
+      },
+    } as any;
+
+    await expect(consumer.process(job)).rejects.toThrow('Bitrix24 Connection Failed');
+    expect(dlqQueue.add).toHaveBeenCalledWith(
+      'failed-tiktok-lead',
+      expect.objectContaining({
+        leadId: 'lead-1',
+        error: 'Bitrix24 Connection Failed',
+      }),
+    );
   });
 });

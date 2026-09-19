@@ -6,11 +6,17 @@ import { DealEntity } from '../database/entities/deal.entity';
 import { Bitrix24Service } from '../bitrix24/bitrix24.service';
 import { NotFoundException } from '@nestjs/common';
 
+import { getQueueToken } from '@nestjs/bullmq';
+import { TIKTOK_LEADS_QUEUE } from '../queue/queue.constants';
+import { TikTokService } from '../tiktok/tiktok.service';
+
 describe('LeadsController', () => {
   let controller: LeadsController;
   let leadRepo: any;
   let dealRepo: any;
-  let bitrix24Service: Bitrix24Service;
+  let bitrix24Service: any;
+  let tiktokService: any;
+  let leadsQueue: any;
 
   beforeEach(async () => {
     const mockQueryBuilder = {
@@ -36,6 +42,22 @@ describe('LeadsController', () => {
       save: jest.fn().mockImplementation((e) => Promise.resolve({ id: 'deal-1', ...e })),
     };
 
+    bitrix24Service = {
+      createDeal: jest.fn().mockResolvedValue(555),
+      updateLead: jest.fn().mockResolvedValue(true),
+      addTimelineComment: jest.fn().mockResolvedValue(1),
+      sendNotification: jest.fn().mockResolvedValue(true),
+    };
+
+    tiktokService = {
+      createPendingLead: jest.fn().mockResolvedValue({ id: 'lead-batch-1', externalId: 'ext-1' }),
+      sendConversionEvent: jest.fn().mockResolvedValue({ success: true }),
+    };
+
+    leadsQueue = {
+      add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LeadsController],
       providers: [
@@ -49,10 +71,15 @@ describe('LeadsController', () => {
         },
         {
           provide: Bitrix24Service,
-          useValue: {
-            createDeal: jest.fn().mockResolvedValue(555),
-            sendNotification: jest.fn().mockResolvedValue(true),
-          },
+          useValue: bitrix24Service,
+        },
+        {
+          provide: TikTokService,
+          useValue: tiktokService,
+        },
+        {
+          provide: getQueueToken(TIKTOK_LEADS_QUEUE),
+          useValue: leadsQueue,
         },
       ],
     }).compile();
@@ -96,6 +123,22 @@ describe('LeadsController', () => {
       await expect(controller.convertToDeal('non-existing')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('batchImportLeads', () => {
+    it('should batch import leads and add jobs to queue', async () => {
+      const result = await controller.batchImportLeads({
+        leads: [
+          { name: 'Lead 1', email: 'l1@test.com' },
+          { name: 'Lead 2', email: 'l2@test.com' },
+        ],
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.total_received).toBe(2);
+      expect(result.queued).toBe(2);
+      expect(leadsQueue.add).toHaveBeenCalledTimes(2);
     });
   });
 });

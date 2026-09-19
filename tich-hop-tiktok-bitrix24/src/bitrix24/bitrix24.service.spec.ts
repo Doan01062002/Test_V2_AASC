@@ -160,5 +160,38 @@ describe('Bitrix24Service', () => {
         expect.anything(),
       );
     });
+
+    it('should fallback to addTimelineComment if IM notification fails and entityContext is provided', async () => {
+      // First call (im.notify.system.add) fails
+      // Second call (crm.timeline.comment.add) succeeds
+      (httpService.post as jest.Mock)
+        .mockReturnValueOnce(of(createAxiosResponse({ error: 'ACCESS_DENIED', error_description: 'Forbidden' })))
+        .mockReturnValueOnce(of(createAxiosResponse({ result: 99 })));
+
+      const result = await service.sendNotification('1', 'Alert message', { type: 'deal', id: 505 });
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('addTimelineComment', () => {
+    it('should call crm.timeline.comment.add successfully', async () => {
+      (httpService.post as jest.Mock).mockReturnValue(
+        of(createAxiosResponse({ result: 107 })),
+      );
+
+      const result = await service.addTimelineComment('lead', 3, 'Timeline log');
+      expect(result).toBe(107);
+      expect(httpService.post).toHaveBeenCalledWith(
+        `${mockWebhookUrl}crm.timeline.comment.add.json`,
+        expect.objectContaining({
+          fields: {
+            ENTITY_ID: 3,
+            ENTITY_TYPE: 'lead',
+            COMMENT: 'Timeline log',
+          },
+        }),
+        expect.anything(),
+      );
+    });
   });
 });

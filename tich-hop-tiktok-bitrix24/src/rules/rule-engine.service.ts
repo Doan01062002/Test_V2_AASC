@@ -52,7 +52,34 @@ export class RuleEngineService {
       return actualVal === targetVal;
     }
 
-    // 3. GREATER THAN >
+    // 3. NOT EQUALS != or <>
+    const neMatch = condition.match(/^(.+?)\s+(?:!=|<>)\s+['"]?([^'"]+?)['"]?$/i);
+    if (neMatch) {
+      const fieldPath = neMatch[1].trim();
+      const targetVal = neMatch[2].trim().toLowerCase();
+      const actualVal = String(this.getValueByPath(context, fieldPath) || '').trim().toLowerCase();
+      return actualVal !== targetVal;
+    }
+
+    // 4. GREATER THAN EQUAL >=
+    const gteMatch = condition.match(/^(.+?)\s*>=\s*([0-9.]+)$/);
+    if (gteMatch) {
+      const fieldPath = gteMatch[1].trim();
+      const targetVal = parseFloat(gteMatch[2]);
+      const actualVal = parseFloat(this.getValueByPath(context, fieldPath));
+      return !isNaN(actualVal) && actualVal >= targetVal;
+    }
+
+    // 5. LESS THAN EQUAL <=
+    const lteMatch = condition.match(/^(.+?)\s*<=\s*([0-9.]+)$/);
+    if (lteMatch) {
+      const fieldPath = lteMatch[1].trim();
+      const targetVal = parseFloat(lteMatch[2]);
+      const actualVal = parseFloat(this.getValueByPath(context, fieldPath));
+      return !isNaN(actualVal) && actualVal <= targetVal;
+    }
+
+    // 6. GREATER THAN >
     const gtMatch = condition.match(/^(.+?)\s*>\s*([0-9.]+)$/);
     if (gtMatch) {
       const fieldPath = gtMatch[1].trim();
@@ -61,7 +88,7 @@ export class RuleEngineService {
       return !isNaN(actualVal) && actualVal > targetVal;
     }
 
-    // 4. LESS THAN <
+    // 7. LESS THAN <
     const ltMatch = condition.match(/^(.+?)\s*<\s*([0-9.]+)$/);
     if (ltMatch) {
       const fieldPath = ltMatch[1].trim();
@@ -70,7 +97,7 @@ export class RuleEngineService {
       return !isNaN(actualVal) && actualVal < targetVal;
     }
 
-    // 5. IN array: field IN ['A', 'B']
+    // 8. IN array: field IN ['A', 'B']
     const inMatch = condition.match(/^(.+?)\s+IN\s+\[(.*?)\]$/i);
     if (inMatch) {
       const fieldPath = inMatch[1].trim();
@@ -107,6 +134,7 @@ export class RuleEngineService {
       campaign: rawData.campaign || {},
       form: rawData.form || {},
       quality_score: lead.qualityScore,
+      qualityScore: lead.qualityScore,
     };
 
     for (const rule of rules) {
@@ -149,10 +177,35 @@ export class RuleEngineService {
         const savedDeal = await this.dealRepository.save(deal);
         createdDeals.push(savedDeal);
 
+        // Update Bitrix24 Lead status to CONVERTED and log timeline
+        if (lead.bitrix24Id) {
+          try {
+            await this.bitrix24Service.updateLead(lead.bitrix24Id, {
+              STATUS_ID: 'CONVERTED',
+            });
+            await this.bitrix24Service.addTimelineComment(
+              'lead',
+              lead.bitrix24Id,
+              `[Chuyển Đổi Thành Deal] Đã tự động tạo Deal #${bitrixDealId || 'Local'} (${rule.name})`,
+            );
+          } catch (updateErr) {
+            this.logger.warn(`Failed to update Bitrix24 lead status: ${(updateErr as Error).message}`);
+          }
+        }
+
+        if (bitrixDealId) {
+          await this.bitrix24Service.addTimelineComment(
+            'deal',
+            bitrixDealId,
+            `[Tạo tự động từ TikTok] Khách: ${lead.name} | SĐT: ${lead.phone || 'N/A'} | Quality Score: ${lead.qualityScore} | Luật: "${rule.name}"`,
+          );
+        }
+
         if (rule.notify && rule.assigned_to) {
           await this.bitrix24Service.sendNotification(
             rule.assigned_to,
             `[Deal Converted] Khách hàng ${lead.name} (${lead.phone || lead.email}) vừa được tạo Deal tự động từ TikTok!`,
+            bitrixDealId ? { type: 'deal', id: bitrixDealId } : undefined,
           );
         }
       }

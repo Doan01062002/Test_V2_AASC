@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Query, Res, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
 import { AnalyticsService } from './analytics.service';
@@ -52,12 +52,8 @@ export class AnalyticsController {
     @Res() res: Response,
   ) {
     if (format.toLowerCase() === 'json') {
-      const perf = await this.analyticsService.getCampaignPerformance();
-      const rates = await this.analyticsService.getConversionRates();
-      return res.status(HttpStatus.OK).json({
-        conversion_rates: rates,
-        campaign_performance: perf,
-      });
+      const jsonReport = await this.analyticsService.exportJsonReport(dateRange);
+      return res.status(HttpStatus.OK).json(jsonReport);
     }
 
     const csvData = await this.analyticsService.exportCsv(dateRange);
@@ -66,5 +62,25 @@ export class AnalyticsController {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     return res.status(HttpStatus.OK).send(csvData);
+  }
+
+  @Get('reports/scheduled-summary')
+  @ApiOperation({
+    summary: 'Get automated daily/scheduled performance summary',
+    description: 'Returns real-time KPIs and top campaigns for automated reporting',
+  })
+  @ApiResponse({ status: 200, description: 'Scheduled report summary' })
+  async getScheduledSummary() {
+    return this.analyticsService.getScheduledReportSummary();
+  }
+
+  @Post('reports/trigger-alert')
+  @ApiOperation({
+    summary: 'Trigger automated notification/alert to Bitrix24',
+    description: 'Evaluates system metrics and alerts sales managers on Bitrix24 CRM',
+  })
+  @ApiResponse({ status: 200, description: 'Alert triggered successfully' })
+  async triggerAlert() {
+    return this.analyticsService.triggerAutomatedAlert();
   }
 }

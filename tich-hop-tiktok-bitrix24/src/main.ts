@@ -33,6 +33,24 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const docsDir = path.join(process.cwd(), 'docs');
+    if (!fs.existsSync(docsDir)) {
+      fs.mkdirSync(docsDir, { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(docsDir, 'swagger.json'),
+      JSON.stringify(document, null, 2),
+      'utf-8',
+    );
+  } catch (err) {
+    logger.warn(
+      `Could not export swagger.json on startup: ${(err as Error).message}`,
+    );
+  }
+
   const port = process.env.PORT || 3000;
   await app.listen(port);
   logger.log(`Server is running on http://localhost:${port}`);

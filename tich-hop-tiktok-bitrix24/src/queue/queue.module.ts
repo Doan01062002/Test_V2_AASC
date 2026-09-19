@@ -7,6 +7,8 @@ import {
   DEFAULT_QUEUE_JOB_OPTIONS,
 } from './queue.constants';
 
+import { QueueController } from './queue.controller';
+
 @Module({
   imports: [
     BullModule.forRootAsync({
@@ -29,6 +31,7 @@ import {
       },
     ),
   ],
+  controllers: [QueueController],
   exports: [BullModule],
 })
 export class QueueModule {}

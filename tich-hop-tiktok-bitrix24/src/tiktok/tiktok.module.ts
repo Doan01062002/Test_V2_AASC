@@ -9,14 +9,19 @@ import { LeadEntity } from '../database/entities/lead.entity';
 import { ConfigurationEntity } from '../database/entities/configuration.entity';
 import { Bitrix24Module } from '../bitrix24/bitrix24.module';
 import { RuleEngineModule } from '../rules/rule-engine.module';
-import { TIKTOK_LEADS_QUEUE } from '../queue/queue.constants';
+import { TIKTOK_LEADS_QUEUE, TIKTOK_LEADS_DLQ } from '../queue/queue.constants';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([LeadEntity, ConfigurationEntity]),
-    BullModule.registerQueue({
-      name: TIKTOK_LEADS_QUEUE,
-    }),
+    BullModule.registerQueue(
+      {
+        name: TIKTOK_LEADS_QUEUE,
+      },
+      {
+        name: TIKTOK_LEADS_DLQ,
+      },
+    ),
     Bitrix24Module,
     RuleEngineModule,
   ],

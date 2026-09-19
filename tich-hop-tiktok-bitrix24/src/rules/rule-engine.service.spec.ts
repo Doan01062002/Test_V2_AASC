@@ -20,6 +20,8 @@ describe('RuleEngineService', () => {
           provide: Bitrix24Service,
           useValue: {
             createDeal: jest.fn().mockResolvedValue(999),
+            updateLead: jest.fn().mockResolvedValue(true),
+            addTimelineComment: jest.fn().mockResolvedValue(1),
             sendNotification: jest.fn().mockResolvedValue(true),
           },
         },
@@ -78,11 +80,15 @@ describe('RuleEngineService', () => {
       ).toBe(false);
     });
 
-    it('should evaluate > and < correctly', () => {
+    it('should evaluate >, <, >=, <=, and != correctly', () => {
       expect(service.evaluateCondition('quality_score > 70', context)).toBe(true);
       expect(service.evaluateCondition('quality_score > 90', context)).toBe(false);
       expect(service.evaluateCondition('quality_score < 90', context)).toBe(true);
       expect(service.evaluateCondition('quality_score < 70', context)).toBe(false);
+      expect(service.evaluateCondition('quality_score >= 85', context)).toBe(true);
+      expect(service.evaluateCondition('quality_score <= 85', context)).toBe(true);
+      expect(service.evaluateCondition("lead_data.city != 'Đà Nẵng'", context)).toBe(true);
+      expect(service.evaluateCondition("lead_data.city != 'Hà Nội'", context)).toBe(false);
     });
 
     it('should evaluate IN correctly', () => {
@@ -145,6 +151,7 @@ describe('RuleEngineService', () => {
       expect(bitrix24Service.sendNotification).toHaveBeenCalledWith(
         '1',
         expect.stringContaining('Nguyen Van A'),
+        expect.objectContaining({ type: 'deal', id: 999 }),
       );
     });
   });

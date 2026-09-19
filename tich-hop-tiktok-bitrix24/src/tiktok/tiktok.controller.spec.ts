@@ -16,6 +16,12 @@ describe('TikTokController', () => {
         id: 'lead-123',
         externalId: 'evt_123',
       }),
+      classifyEvent: jest.fn().mockReturnValue('lead_submission'),
+      sendConversionEvent: jest.fn().mockResolvedValue({
+        success: true,
+        event: 'Purchase',
+        status: 'synced_to_tiktok',
+      }),
     };
 
     queue = {
@@ -53,5 +59,16 @@ describe('TikTokController', () => {
     expect(res.lead_id).toBe('lead-123');
     expect(tiktokService.createPendingLead).toHaveBeenCalledWith(payload);
     expect(queue.add).toHaveBeenCalled();
+  });
+
+  it('should handle conversion event dispatch to TikTok', async () => {
+    const res = await controller.handleConversionEvent({
+      eventName: 'Purchase',
+      value: 5000000,
+      currency: 'VND',
+    });
+
+    expect(res.success).toBe(true);
+    expect(tiktokService.sendConversionEvent).toHaveBeenCalled();
   });
 });

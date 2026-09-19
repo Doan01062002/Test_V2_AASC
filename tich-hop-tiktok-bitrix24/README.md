@@ -121,25 +121,32 @@
 
 ---
 
-## 4. Danh Mục 10 API Endpoints Bắt Buộc
+## 4. Danh Mục Các API Endpoints Hệ Thống
 
 | STT | Phương thức | Endpoint | Mô tả |
 | :---: | :---: | :--- | :--- |
 | **1** | `POST` | `/webhooks/tiktok/leads` | Tiếp nhận webhook từ TikTok Lead Gen Forms (xác thực HMAC-SHA256) |
-| **2** | `POST` | `/webhooks/bitrix24/deals` | Tiếp nhận sự kiện cập nhật trạng thái Deal từ Bitrix24 CRM |
-| **3** | `GET` | `/api/v1/leads?page=1&limit=10&source=tiktok` | Lấy danh sách leads có phân trang và bộ lọc |
-| **4** | `POST` | `/api/v1/leads/:id/convert-to-deal` | Chuyển đổi thủ công một Lead thành Deal |
-| **5** | `GET` | `/api/v1/deals?status=open&assigned_to=1` | Lấy danh sách Deals trên CRM theo bộ lọc |
-| **6** | `GET` | `/api/v1/config/mappings` | Lấy cấu hình ánh xạ trường TikTok sang Bitrix24 |
-| **7** | `PUT` | `/api/v1/config/mappings` | Cập nhật cấu hình ánh xạ trường |
-| **8** | `GET` | `/api/v1/config/rules` | Lấy danh sách quy tắc Rule Engine chuyển đổi Deal |
-| **9** | `PUT` | `/api/v1/config/rules` | Cập nhật danh sách quy tắc Rule Engine |
-| **10**| `GET` | `/api/v1/analytics/conversion-rates` | Thống kê tỷ lệ chuyển đổi Lead-to-Deal và Deal-to-Won |
-| **11**| `GET` | `/api/v1/analytics/campaign-performance` | Thống kê hiệu suất chiến dịch, CPL và ROI |
-| **12**| `GET` | `/api/v1/reports/export?format=csv&date_range=30d` | Xuất file báo cáo định dạng CSV (UTF-8 BOM) hoặc JSON |
-| **13**| `GET` | `/dashboard` | Giao diện Web Dashboard trực quan |
-| **14**| `GET` | `/api/docs` | Swagger OpenAPI Documentation tương tác |
-| **15**| `GET` | `/health` | Kiểm tra trạng thái hoạt động của Postgres & Redis |
+| **2** | `POST` | `/webhooks/tiktok/conversions` | Tiếp nhận & kích hoạt sự kiện chuyển đổi ngược về TikTok Events API |
+| **3** | `POST` | `/webhooks/bitrix24/deals` | Tiếp nhận sự kiện cập nhật trạng thái Deal từ Bitrix24 CRM |
+| **4** | `GET` | `/api/v1/leads?page=1&limit=10&source=tiktok` | Lấy danh sách leads có phân trang và bộ lọc |
+| **5** | `POST` | `/api/v1/leads/batch` | **Batch Processing Migration**: Nhập hàng loạt leads lịch sử vào hàng đợi |
+| **6** | `POST` | `/api/v1/leads/:id/convert-to-deal` | Chuyển đổi thủ công một Lead thành Deal và đồng bộ Bitrix24 |
+| **7** | `GET` | `/api/v1/deals?status=open&assigned_to=1` | Lấy danh sách Deals trên CRM theo bộ lọc |
+| **8** | `GET` | `/api/v1/queue/dlq` | Lấy danh sách các jobs thất bại trong Dead Letter Queue (DLQ) |
+| **9** | `POST` | `/api/v1/queue/dlq/retry` | Kích hoạt thử lại (retry) toàn bộ các jobs trong DLQ |
+| **10**| `DELETE`| `/api/v1/queue/dlq` | Xóa sạch các jobs thất bại trong DLQ |
+| **11**| `GET` | `/api/v1/config/mappings` | Lấy cấu hình ánh xạ trường TikTok sang Bitrix24 |
+| **12**| `PUT` | `/api/v1/config/mappings` | Cập nhật cấu hình ánh xạ trường |
+| **13**| `GET` | `/api/v1/config/rules` | Lấy danh sách quy tắc Rule Engine chuyển đổi Deal |
+| **14**| `PUT` | `/api/v1/config/rules` | Cập nhật danh sách quy tắc Rule Engine |
+| **15**| `GET` | `/api/v1/analytics/conversion-rates` | Thống kê tỷ lệ chuyển đổi Lead-to-Deal và Deal-to-Won |
+| **16**| `GET` | `/api/v1/analytics/campaign-performance` | Thống kê hiệu suất chiến dịch, CPL và ROI |
+| **17**| `GET` | `/api/v1/reports/export?format=csv&date_range=30d` | Xuất file báo cáo định dạng CSV (UTF-8 BOM) hoặc JSON |
+| **18**| `GET` | `/api/v1/reports/scheduled-summary` | Báo cáo định kỳ tổng hợp hiệu suất chuyển đổi và chiến dịch |
+| **19**| `POST` | `/api/v1/reports/trigger-alert` | Kích hoạt cảnh báo tự động khi phát hiện Hot Leads hoặc tỷ lệ bất thường |
+| **20**| `GET` | `/dashboard` | Giao diện Web Dashboard trực quan (Tailwind CSS + Alpine.js + Chart.js) |
+| **21**| `GET` | `/api/docs` | Swagger OpenAPI Documentation tương tác trực tuyến |
+| **22**| `GET` | `/health` | Kiểm tra trạng thái hoạt động của Postgres & Redis |
 
 ---
 
@@ -203,8 +210,9 @@ docker-compose ps
 
 ---
 
-## 6. Thử Nghiệm Với Mock TikTok Webhook
+## 6. Thử Nghiệm & Công Cụ Tiện Ích
 
+### 6.1. Gửi Mock TikTok Webhook Lead
 Dự án cung cấp công cụ `scripts/mock-tiktok-webhook.ts` tạo payload chuẩn từ TikTok Ads Form, tự động ký chữ ký số HMAC-SHA256 và gửi HTTP POST đến ứng dụng:
 
 ```bash
@@ -214,6 +222,20 @@ npm run mock:webhook
 Hoặc chỉ định thông tin tùy biến:
 ```bash
 npx ts-node scripts/mock-tiktok-webhook.ts "Trần Thị B" "0912345678" "tranthib@gmail.com"
+```
+
+### 6.2. Chạy Batch Historical Migration (Di Chuyển Dữ Liệu Lịch Sử)
+Xử lý hàng loạt các Lead cũ từ file export TikTok hoặc database legacy vào BullMQ Queue:
+
+```bash
+npm run migrate:historical
+```
+
+### 6.3. Xuất Tài Liệu Swagger OpenAPI JSON
+Tự động trích xuất toàn bộ đặc tả OpenAPI thành file tĩnh `docs/swagger.json` và `swagger.json`:
+
+```bash
+npm run export:swagger
 ```
 
 ---

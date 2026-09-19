@@ -1,9 +1,9 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { TIKTOK_LEADS_QUEUE } from '../../queue/queue.constants';
+import { TIKTOK_LEADS_QUEUE, TIKTOK_LEADS_DLQ } from '../../queue/queue.constants';
 import { TikTokService } from '../tiktok.service';
 import { Bitrix24Service } from '../../bitrix24/bitrix24.service';
 import { RuleEngineService } from '../../rules/rule-engine.service';
@@ -28,6 +28,8 @@ export class TikTokLeadConsumer extends WorkerHost {
     private readonly leadRepository: Repository<LeadEntity>,
     @InjectRepository(ConfigurationEntity)
     private readonly configRepository: Repository<ConfigurationEntity>,
+    @InjectQueue(TIKTOK_LEADS_DLQ)
+    private readonly dlqQueue: Queue,
   ) {
     super();
   }
@@ -146,28 +148,58 @@ export class TikTokLeadConsumer extends WorkerHost {
         lead.bitrix24Id = createdId;
         this.logger.log(`Created Bitrix24 lead with ID ${createdId}`);
       }
+
+      // Add timeline comment and source tracking to Bitrix24 Lead
+      if (lead.bitrix24Id) {
+        await this.bitrix24Service.addTimelineComment(
+          'lead',
+          lead.bitrix24Id,
+          `📌 [TikTok Lead Source Tracking]\n- Chiến dịch: ${extracted.campaignId || 'tiktok'}\n- Ad ID: ${extracted.adId || 'N/A'}\n- Form: ${extracted.formName || extracted.formId || 'N/A'}\n- Điểm chất lượng: ${qualityResult.score}/100 (${qualityResult.classification})\n- SĐT: ${normalizedPhone || 'N/A'} | Email: ${normalizedEmail || 'N/A'}`,
+        );
+      }
+
+      // Rule Engine: Process conversion to Deal
+      const createdDeals = await this.ruleEngineService.processLeadRules(lead);
+      lead.status = createdDeals.length > 0 ? 'converted' : 'processed';
+
+      await this.leadRepository.save(lead);
+
+      this.logger.log(
+        `Completed processing lead ${lead.id} (Bitrix24: ${lead.bitrix24Id}, Deals: ${createdDeals.length}, Quality: ${lead.qualityScore})`,
+      );
+
+      return {
+        leadId: lead.id,
+        bitrix24Id: lead.bitrix24Id,
+        status: lead.status,
+        qualityScore: lead.qualityScore,
+        dealsCreated: createdDeals.length,
+      };
     } catch (err) {
       this.logger.error(
-        `Failed to sync lead to Bitrix24: ${(err as Error).message}`,
+        `Failed to process lead ${lead.id}: ${(err as Error).message}`,
       );
+
+      const maxAttempts = job.opts?.attempts || 3;
+      if (job.attemptsMade + 1 >= maxAttempts) {
+        this.logger.warn(`Exhausted all retries for lead ${lead.id}. Transferring to DLQ.`);
+        try {
+          if (this.dlqQueue) {
+            await this.dlqQueue.add('failed-tiktok-lead', {
+              leadId: lead.id,
+              payload,
+              error: (err as Error).message,
+              failedAt: new Date(),
+            });
+          }
+        } catch (dlqErr) {
+          this.logger.error(`Failed to push to DLQ: ${(dlqErr as Error).message}`);
+        }
+        lead.status = 'failed';
+        await this.leadRepository.save(lead);
+      }
+
+      throw err;
     }
-
-    // Rule Engine: Process conversion to Deal
-    const createdDeals = await this.ruleEngineService.processLeadRules(lead);
-    lead.status = createdDeals.length > 0 ? 'converted' : 'processed';
-
-    await this.leadRepository.save(lead);
-
-    this.logger.log(
-      `Completed processing lead ${lead.id} (Bitrix24: ${lead.bitrix24Id}, Deals: ${createdDeals.length}, Quality: ${lead.qualityScore})`,
-    );
-
-    return {
-      leadId: lead.id,
-      bitrix24Id: lead.bitrix24Id,
-      status: lead.status,
-      qualityScore: lead.qualityScore,
-      dealsCreated: createdDeals.length,
-    };
   }
 }

@@ -139,5 +139,62 @@ describe('Webhooks & API Endpoints (E2E)', () => {
       expect(res.headers['content-type']).toContain('text/csv');
       expect(res.text.startsWith('\uFEFF')).toBe(true); // UTF-8 BOM check
     });
+
+    it('GET /api/v1/reports/export?format=json', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/reports/export?format=json&date_range=30d');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('leads');
+      expect(res.body).toHaveProperty('summary');
+    });
+
+    it('GET /api/v1/reports/scheduled-summary', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/reports/scheduled-summary');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('report_type');
+    });
+
+    it('POST /api/v1/reports/trigger-alert', async () => {
+      const res = await request(app.getHttpServer()).post('/api/v1/reports/trigger-alert');
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('alert_triggered');
+    });
+  });
+
+  describe('Batch Leads Migration & DLQ Endpoints', () => {
+    it('POST /api/v1/leads/batch should queue historical leads', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/leads/batch')
+        .send({
+          leads: [
+            {
+              event_id: `e2e_batch_01_${Date.now()}`,
+              lead_data: { full_name: 'Batch Lead 1', email: 'batch1@test.com' },
+            },
+          ],
+        });
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.queued).toBe(1);
+    });
+
+    it('GET /api/v1/queue/dlq should return DLQ job list', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/queue/dlq');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('total');
+      expect(res.body).toHaveProperty('queue');
+    });
+
+    it('POST /webhooks/tiktok/conversions should process conversion event', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/webhooks/tiktok/conversions')
+        .send({
+          eventName: 'Purchase',
+          value: 10000000,
+          currency: 'VND',
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.event).toBe('Purchase');
+    });
   });
 });

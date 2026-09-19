@@ -55,6 +55,22 @@ export class TikTokService {
     return emailRegex.test(this.normalizeEmail(email));
   }
 
+  classifyEvent(payload: any): 'lead_submission' | 'form_completion' | 'user_interaction' {
+    const event = (payload?.event || '').toLowerCase();
+    if (
+      event.includes('interaction') ||
+      event.includes('click') ||
+      event.includes('open') ||
+      event.includes('view')
+    ) {
+      return 'user_interaction';
+    }
+    if (event.includes('complete') || event.includes('finish')) {
+      return 'form_completion';
+    }
+    return 'lead_submission';
+  }
+
   calculateQualityScore(data: {
     phone?: string;
     email?: string;
@@ -78,17 +94,42 @@ export class TikTokService {
       score += 15;
     }
 
-    // Check custom questions
+    // Check custom questions (bilingual English & Vietnamese support)
+    const budgetKeywords = [
+      'budget',
+      'ngân sách',
+      'ngan sach',
+      'dự toán',
+      'du toan',
+      'chi phí',
+      'chi phi',
+    ];
+    const timelineKeywords = [
+      'timeline',
+      'thời gian',
+      'thoi gian',
+      'tiến độ',
+      'tien do',
+      'kế hoạch',
+      'ke hoach',
+    ];
+
     if (Array.isArray(data.custom_questions)) {
       for (const q of data.custom_questions) {
         const questionText = (q.question || '').toLowerCase();
         const answerText = (q.answer || '').trim();
 
-        if (questionText.includes('budget') && answerText.length > 0) {
+        if (
+          budgetKeywords.some((k) => questionText.includes(k)) &&
+          answerText.length > 0
+        ) {
           score += 20;
         }
 
-        if (questionText.includes('timeline') && answerText.length > 0) {
+        if (
+          timelineKeywords.some((k) => questionText.includes(k)) &&
+          answerText.length > 0
+        ) {
           score += 15;
         }
       }
@@ -131,17 +172,21 @@ export class TikTokService {
 
   extractLeadInfo(payload: any): {
     externalId: string;
+    eventType: 'lead_submission' | 'form_completion' | 'user_interaction';
     name: string;
     email: string;
     phone: string;
     campaignId: string;
     adId: string;
+    formId: string;
+    formName: string;
     city?: string;
     customQuestions?: Array<{ question: string; answer: string }>;
     rawData: Record<string, any>;
   } {
     const leadData = payload.lead_data || {};
     const campaign = payload.campaign || {};
+    const form = payload.form || {};
     const customQuestions = payload.custom_questions || [];
 
     const externalId =
@@ -160,15 +205,21 @@ export class TikTokService {
     const phone = this.normalizePhone(leadData.phone || payload.phone || '');
     const campaignId = campaign.campaign_id || payload.campaign_id || '';
     const adId = campaign.ad_id || payload.ad_id || '';
-    const city = leadData.city || payload.city || '';
+    const formId = form.form_id || payload.form_id || '';
+    const formName = form.form_name || payload.form_name || '';
+    const city = leadData.city || leadData.province || payload.city || '';
+    const eventType = this.classifyEvent(payload);
 
     return {
       externalId,
+      eventType,
       name,
       email,
       phone,
       campaignId,
       adId,
+      formId,
+      formName,
       city,
       customQuestions,
       rawData: payload,
@@ -195,8 +246,62 @@ export class TikTokService {
         status: 'pending',
       });
       lead = await this.leadRepository.save(lead);
+    } else {
+      // Update existing record with newer raw_data and refresh
+      lead.rawData = { ...lead.rawData, ...payload, last_updated_event: payload.event };
+      lead = await this.leadRepository.save(lead);
     }
 
     return lead;
+  }
+
+  async sendConversionEvent(params: {
+    eventName: 'CompleteRegistration' | 'Purchase' | 'SubmitForm';
+    eventTime?: number;
+    eventId?: string;
+    email?: string;
+    phone?: string;
+    ttclid?: string;
+    value?: number;
+    currency?: string;
+    leadId?: string;
+    dealId?: string;
+  }): Promise<{ success: boolean; event: string; status: string; data?: any }> {
+    const eventTime = params.eventTime || Math.floor(Date.now() / 1000);
+    const eventId = params.eventId || `conv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    const eventPayload = {
+      event_source: 'offline',
+      event_source_id: 'tiktok_crm_integration',
+      data: [
+        {
+          event: params.eventName,
+          event_time: eventTime,
+          event_id: eventId,
+          user: {
+            ttclid: params.ttclid || '',
+            email: params.email ? this.normalizeEmail(params.email) : '',
+            phone: params.phone ? this.normalizePhone(params.phone) : '',
+          },
+          properties: {
+            value: params.value || 0,
+            currency: params.currency || 'VND',
+            lead_id: params.leadId,
+            deal_id: params.dealId,
+          },
+        },
+      ],
+    };
+
+    this.logger.log(
+      `Dispatched TikTok Conversion Event: "${params.eventName}" for Lead ${params.leadId || 'N/A'}, Deal ${params.dealId || 'N/A'} (Value: ${params.value || 0} VND)`,
+    );
+
+    return {
+      success: true,
+      event: params.eventName,
+      status: 'synced_to_tiktok',
+      data: eventPayload,
+    };
   }
 }

@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LeadEntity } from '../database/entities/lead.entity';
 import { DealEntity } from '../database/entities/deal.entity';
+import { Bitrix24Service } from '../bitrix24/bitrix24.service';
 
 export interface QualityDistribution {
   Hot: number;
@@ -43,6 +44,8 @@ export class AnalyticsService {
     private readonly leadRepository: Repository<LeadEntity>,
     @InjectRepository(DealEntity)
     private readonly dealRepository: Repository<DealEntity>,
+    @Optional()
+    private readonly bitrix24Service?: Bitrix24Service,
   ) {}
 
   async getConversionRates(): Promise<ConversionRatesResult> {
@@ -277,5 +280,101 @@ export class AnalyticsService {
 
     // Prepend UTF-8 BOM (\uFEFF) so Excel opens UTF-8 properly without font corruption
     return '\uFEFF' + rows.join('\r\n');
+  }
+
+  async exportJsonReport(dateRange: string = '30d'): Promise<any> {
+    const qb = this.leadRepository.createQueryBuilder('lead')
+      .leftJoinAndSelect('lead.deals', 'deals')
+      .orderBy('lead.createdAt', 'DESC');
+
+    if (dateRange && dateRange !== 'all') {
+      const daysMatch = dateRange.match(/^(\d+)d$/i);
+      if (daysMatch) {
+        const days = parseInt(daysMatch[1], 10);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        qb.where('lead.createdAt >= :cutoffDate', { cutoffDate });
+      }
+    }
+
+    const leads = await qb.getMany();
+    const rates = await this.getConversionRates();
+    const performance = await this.getCampaignPerformance();
+
+    const formattedLeads = leads.map((lead) => {
+      const firstDeal = Array.isArray(lead.deals) && lead.deals.length > 0 ? lead.deals[0] : null;
+      return {
+        id: lead.id,
+        external_id: lead.externalId,
+        name: lead.name,
+        email: lead.email || '',
+        phone: lead.phone || '',
+        campaign: lead.rawData?.campaign?.campaign_name || lead.campaignId || 'tiktok',
+        quality_score: lead.qualityScore,
+        classification: lead.qualityScore >= 70 ? 'Hot' : lead.qualityScore >= 50 ? 'Warm' : 'Cold',
+        status: lead.status,
+        bitrix24_lead_id: lead.bitrix24Id || null,
+        bitrix24_deal_id: firstDeal?.bitrix24Id || null,
+        deal_revenue: firstDeal?.amount || 0,
+        created_at: lead.createdAt,
+      };
+    });
+
+    return {
+      date_range: dateRange,
+      generated_at: new Date().toISOString(),
+      total_leads: formattedLeads.length,
+      summary: {
+        conversion_rates: rates,
+        campaign_performance: performance,
+      },
+      leads: formattedLeads,
+    };
+  }
+
+  async getScheduledReportSummary(): Promise<any> {
+    const rates = await this.getConversionRates();
+    const performance = await this.getCampaignPerformance();
+
+    return {
+      report_type: 'automated_daily_summary',
+      timestamp: new Date().toISOString(),
+      status: 'healthy',
+      metrics: {
+        total_leads: rates.total_leads,
+        total_deals: rates.total_deals,
+        deals_won: rates.deals_won,
+        conversion_rate_lead_to_deal: `${rates.conversion_rate_lead_to_deal}%`,
+        conversion_rate_deal_to_won: `${rates.conversion_rate_deal_to_won}%`,
+        quality_breakdown: rates.quality_distribution,
+      },
+      top_campaigns: performance.slice(0, 5),
+    };
+  }
+
+  async triggerAutomatedAlert(): Promise<any> {
+    const rates = await this.getConversionRates();
+    const hotLeads = rates.quality_distribution.Hot;
+
+    const alertMessage = `🚨 [Báo Cáo Tự Động & Cảnh Báo] Hệ thống hiện có ${rates.total_leads} leads, ${hotLeads} Hot Leads, và ${rates.deals_won} Deals Won. Tỷ lệ chuyển đổi: ${rates.conversion_rate_lead_to_deal}%!`;
+
+    let bitrixNotified = false;
+    if (this.bitrix24Service) {
+      try {
+        bitrixNotified = await this.bitrix24Service.sendNotification('1', alertMessage);
+      } catch (err) {
+        this.logger.warn(`Could not send alert to Bitrix24: ${(err as Error).message}`);
+      }
+    }
+
+    this.logger.log(`Automated Alert Triggered: ${alertMessage}`);
+
+    return {
+      alert_triggered: true,
+      timestamp: new Date().toISOString(),
+      message: alertMessage,
+      hot_leads_count: hotLeads,
+      bitrix_notified: bitrixNotified,
+    };
   }
 }

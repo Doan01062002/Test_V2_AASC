@@ -53,6 +53,7 @@ export class TikTokController {
 
     const lead = await this.tiktokService.createPendingLead(payload);
 
+    const dynamicJobId = `${lead.id}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     await this.leadsQueue.add(
       PROCESS_TIKTOK_LEAD,
       {
@@ -60,7 +61,7 @@ export class TikTokController {
         payload,
       },
       {
-        jobId: lead.id,
+        jobId: dynamicJobId,
       },
     );
 
@@ -69,6 +70,41 @@ export class TikTokController {
       message: 'Webhook received and queued for processing',
       event_id: payload.event_id || lead.externalId,
       lead_id: lead.id,
+      event_type: this.tiktokService.classifyEvent(payload),
     };
+  }
+
+  @Post('conversions')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Send conversion event back to TikTok Events API',
+    description: 'Syncs offline or CRM conversion status updates (e.g. Purchase, CompleteRegistration) back to TikTok',
+  })
+  @ApiResponse({ status: 200, description: 'Conversion event synced successfully' })
+  async handleConversionEvent(
+    @Body()
+    body: {
+      eventName?: 'CompleteRegistration' | 'Purchase' | 'SubmitForm';
+      leadId?: string;
+      dealId?: string;
+      email?: string;
+      phone?: string;
+      ttclid?: string;
+      value?: number;
+      currency?: string;
+    },
+  ) {
+    const result = await this.tiktokService.sendConversionEvent({
+      eventName: body.eventName || 'Purchase',
+      leadId: body.leadId,
+      dealId: body.dealId,
+      email: body.email,
+      phone: body.phone,
+      ttclid: body.ttclid,
+      value: body.value || 0,
+      currency: body.currency || 'VND',
+    });
+
+    return result;
   }
 }

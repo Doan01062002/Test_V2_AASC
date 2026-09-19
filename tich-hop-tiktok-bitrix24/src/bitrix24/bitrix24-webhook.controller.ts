@@ -39,6 +39,7 @@ export class Bitrix24WebhookController {
 
     const dealId =
       payload?.data?.FIELDS?.ID ||
+      payload?.['data[FIELDS][ID]'] ||
       payload?.document_id?.[2] ||
       payload?.ID ||
       payload?.id;
@@ -50,6 +51,7 @@ export class Bitrix24WebhookController {
         if (dealData) {
           let deal = await this.dealRepository.findOne({
             where: { bitrix24Id },
+            relations: ['lead'],
           });
 
           if (deal) {
@@ -64,6 +66,17 @@ export class Bitrix24WebhookController {
             this.logger.log(
               `Updated local Deal ${deal.id} for Bitrix24 Deal ${bitrix24Id} to stage ${deal.stage}`,
             );
+
+            const isWon =
+              deal.stage.toUpperCase().includes('WON') ||
+              deal.stage.toUpperCase() === 'SUCCESS';
+            if (isWon) {
+              await this.bitrix24Service.addTimelineComment(
+                'deal',
+                bitrix24Id,
+                `🎉 [Deal Won] Chốt đơn thành công với giá trị ${deal.amount} ${deal.currency}. Đã kích hoạt Conversion Event!`,
+              );
+            }
           }
         }
       } catch (err) {

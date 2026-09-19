@@ -11,9 +11,13 @@ import {
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { LeadEntity } from '../database/entities/lead.entity';
 import { DealEntity } from '../database/entities/deal.entity';
 import { Bitrix24Service } from '../bitrix24/bitrix24.service';
+import { TikTokService } from '../tiktok/tiktok.service';
+import { TIKTOK_LEADS_QUEUE, PROCESS_TIKTOK_LEAD } from '../queue/queue.constants';
 
 @ApiTags('Management')
 @Controller('api/v1/leads')
@@ -26,6 +30,9 @@ export class LeadsController {
     @InjectRepository(DealEntity)
     private readonly dealRepository: Repository<DealEntity>,
     private readonly bitrix24Service: Bitrix24Service,
+    private readonly tiktokService: TikTokService,
+    @InjectQueue(TIKTOK_LEADS_QUEUE)
+    private readonly leadsQueue: Queue,
   ) {}
 
   @Get()
@@ -132,15 +139,94 @@ export class LeadsController {
     lead.status = 'converted';
     await this.leadRepository.save(lead);
 
+    // Update Bitrix24 Lead status to CONVERTED and log timeline comments
+    if (lead.bitrix24Id) {
+      try {
+        await this.bitrix24Service.updateLead(lead.bitrix24Id, {
+          STATUS_ID: 'CONVERTED',
+        });
+        await this.bitrix24Service.addTimelineComment(
+          'lead',
+          lead.bitrix24Id,
+          `[Chuyển Đổi Thành Deal] Đã chuyển đổi thủ công thành Deal #${bitrixDealId || 'Local'}: "${title}"`,
+        );
+      } catch (err) {
+        this.logger.warn(`Failed to update lead status on Bitrix24: ${(err as Error).message}`);
+      }
+    }
+
+    if (bitrixDealId) {
+      await this.bitrix24Service.addTimelineComment(
+        'deal',
+        bitrixDealId,
+        `[Deal Tạo Thủ Công] Chuyển đổi từ Lead ID: ${lead.id} (${lead.name})`,
+      );
+    }
+
+    // Trigger conversion event back to TikTok
+    try {
+      await this.tiktokService.sendConversionEvent({
+        eventName: 'CompleteRegistration',
+        leadId: lead.id,
+        dealId: savedDeal.id,
+        email: lead.email,
+        phone: lead.phone,
+        value: amount,
+        currency: 'VND',
+      });
+    } catch (err) {
+      this.logger.warn(`Could not send conversion event to TikTok: ${(err as Error).message}`);
+    }
+
     try {
       await this.bitrix24Service.sendNotification(
         assignedTo,
         `[Lead Converted] Lead ${lead.name} đã được chuyển đổi thành Deal: "${title}"!`,
+        bitrixDealId ? { type: 'deal', id: bitrixDealId } : undefined,
       );
     } catch (err) {
       // Ignored
     }
 
     return savedDeal;
+  }
+
+  @Post('batch')
+  @ApiOperation({
+    summary: 'Batch processing for historical lead migration',
+    description: 'Accepts an array of historical TikTok leads and queues them for processing',
+  })
+  @ApiResponse({ status: 200, description: 'Batch leads queued successfully' })
+  async batchImportLeads(@Body() body: { leads: any[] }) {
+    const leadsList = Array.isArray(body?.leads) ? body.leads : [];
+    const batchId = `batch_${Date.now()}`;
+    let queued = 0;
+
+    for (const item of leadsList) {
+      const lead = await this.tiktokService.createPendingLead(item);
+      const dynamicJobId = `${lead.id}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      await this.leadsQueue.add(
+        PROCESS_TIKTOK_LEAD,
+        {
+          leadId: lead.id,
+          payload: item,
+          batchId,
+        },
+        {
+          jobId: dynamicJobId,
+        },
+      );
+      queued++;
+    }
+
+    this.logger.log(`Queued ${queued} historical leads in batch ${batchId}`);
+
+    return {
+      success: true,
+      batch_id: batchId,
+      total_received: leadsList.length,
+      queued,
+      message: `Đã đưa ${queued} lead lịch sử vào hàng đợi xử lý ngầm (BullMQ).`,
+    };
   }
 }

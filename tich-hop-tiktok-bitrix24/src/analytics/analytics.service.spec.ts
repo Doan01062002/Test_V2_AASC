@@ -126,4 +126,52 @@ describe('AnalyticsService', () => {
       expect(res[0].cost_per_lead).toBe(50000);
     });
   });
+
+  describe('exportJsonReport', () => {
+    it('should return complete JSON report with lead list and summary', async () => {
+      const mockLeads = [
+        {
+          id: 'lead-1',
+          externalId: 'evt_1',
+          name: 'Nguyen A',
+          email: 'a@mail.com',
+          phone: '+84901234567',
+          qualityScore: 80,
+          status: 'converted',
+          deals: [{ id: 'd1', amount: 5000000 }],
+          createdAt: new Date(),
+        },
+      ] as any[];
+
+      const mockQb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(mockLeads),
+      };
+      (leadRepo.createQueryBuilder as jest.Mock).mockReturnValue(mockQb);
+      (leadRepo.find as jest.Mock).mockResolvedValue(mockLeads);
+      (dealRepo.find as jest.Mock).mockResolvedValue([]);
+
+      const report = await service.exportJsonReport('30d');
+      expect(report.total_leads).toBe(1);
+      expect(report.leads[0].name).toBe('Nguyen A');
+      expect(report.summary).toBeDefined();
+    });
+  });
+
+  describe('scheduledReportsAndAlerts', () => {
+    it('should return scheduled summary and trigger alert', async () => {
+      (leadRepo.find as jest.Mock).mockResolvedValue([]);
+      (dealRepo.find as jest.Mock).mockResolvedValue([]);
+
+      const summary = await service.getScheduledReportSummary();
+      expect(summary.report_type).toBe('automated_daily_summary');
+      expect(summary.metrics).toBeDefined();
+
+      const alert = await service.triggerAutomatedAlert();
+      expect(alert.alert_triggered).toBe(true);
+      expect(alert.message).toContain('Báo Cáo Tự Động');
+    });
+  });
 });

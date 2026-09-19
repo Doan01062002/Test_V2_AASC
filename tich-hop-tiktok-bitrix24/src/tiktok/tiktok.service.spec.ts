@@ -143,5 +143,40 @@ describe('TikTokService', () => {
       expect(lead.status).toBe('pending');
       expect(leadRepo.save).toHaveBeenCalled();
     });
+
+    it('should calculate full 100 points with Vietnamese custom questions', () => {
+      const data = {
+        phone: '0901234567',
+        email: 'test@example.com',
+        city: 'Hà Nội',
+        custom_questions: [
+          { question: 'Ngân sách dự kiến', answer: '10-20 triệu' },
+          { question: 'Thời gian thực hiện', answer: 'Trong tuần này' },
+        ],
+      };
+
+      const result = service.calculateQualityScore(data);
+      expect(result.score).toBe(100);
+      expect(result.classification).toBe('Hot');
+    });
+
+    it('should classify event types correctly', () => {
+      expect(service.classifyEvent({ event: 'lead.generate' })).toBe('lead_submission');
+      expect(service.classifyEvent({ event: 'form.complete' })).toBe('form_completion');
+      expect(service.classifyEvent({ event: 'user.click_view' })).toBe('user_interaction');
+    });
+
+    it('should dispatch conversion event structure', async () => {
+      const conv = await service.sendConversionEvent({
+        eventName: 'Purchase',
+        leadId: 'lead-1',
+        dealId: 'deal-1',
+        value: 10000000,
+        currency: 'VND',
+      });
+      expect(conv.success).toBe(true);
+      expect(conv.event).toBe('Purchase');
+      expect(conv.data.data[0].properties.value).toBe(10000000);
+    });
   });
 });

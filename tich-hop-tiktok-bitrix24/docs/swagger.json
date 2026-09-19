@@ -1,0 +1,488 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/queue/dlq": {
+      "get": {
+        "operationId": "QueueController_getDlqJobs",
+        "summary": "List failed jobs in Dead Letter Queue (DLQ)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Return list of jobs in DLQ"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      },
+      "delete": {
+        "operationId": "QueueController_clearDlq",
+        "summary": "Purge all jobs from Dead Letter Queue",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "DLQ purged successfully"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      }
+    },
+    "/api/v1/queue/dlq/retry": {
+      "post": {
+        "operationId": "QueueController_retryDlqJobs",
+        "summary": "Retry all failed jobs from Dead Letter Queue",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Failed jobs re-queued into main processing queue"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      }
+    },
+    "/webhooks/tiktok/leads": {
+      "post": {
+        "operationId": "TikTokController_handleLeadWebhook",
+        "summary": "Receive TikTok Lead Generation webhook",
+        "description": "Receives lead events from TikTok Lead Generation Forms, stores raw data, and queues for async processing.",
+        "parameters": [
+          {
+            "name": "TikTok-Signature",
+            "in": "header",
+            "description": "HMAC-SHA256 signature of request payload",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook received and queued successfully"
+          },
+          "401": {
+            "description": "Invalid or missing signature"
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/webhooks/tiktok/conversions": {
+      "post": {
+        "operationId": "TikTokController_handleConversionEvent",
+        "summary": "Send conversion event back to TikTok Events API",
+        "description": "Syncs offline or CRM conversion status updates (e.g. Purchase, CompleteRegistration) back to TikTok",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Conversion event synced successfully"
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/webhooks/bitrix24/deals": {
+      "post": {
+        "operationId": "Bitrix24WebhookController_handleDealWebhook",
+        "summary": "Receive Bitrix24 Deal status update webhook",
+        "description": "Receives webhook updates when a Deal stage or details change in Bitrix24 CRM.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Bitrix24 webhook processed successfully"
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/api/v1/leads": {
+      "get": {
+        "operationId": "LeadsController_getLeads",
+        "summary": "Get paginated list of leads",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "source",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "tiktok",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return paginated leads"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      }
+    },
+    "/api/v1/leads/{id}/convert-to-deal": {
+      "post": {
+        "operationId": "LeadsController_convertToDeal",
+        "summary": "Manually convert a lead to deal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lead successfully converted to deal"
+          },
+          "404": {
+            "description": "Lead not found"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      }
+    },
+    "/api/v1/leads/batch": {
+      "post": {
+        "operationId": "LeadsController_batchImportLeads",
+        "summary": "Batch processing for historical lead migration",
+        "description": "Accepts an array of historical TikTok leads and queues them for processing",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Batch leads queued successfully"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      }
+    },
+    "/api/v1/deals": {
+      "get": {
+        "operationId": "DealsController_getDeals",
+        "summary": "Get list of deals with filtering",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "'open' for active deals, or specific stage name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assigned_to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return paginated deals"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      }
+    },
+    "/api/v1/config/mappings": {
+      "get": {
+        "operationId": "ConfigController_getFieldMappings",
+        "summary": "Get current TikTok-to-Bitrix24 field mapping configuration",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Field mapping configuration"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      },
+      "put": {
+        "operationId": "ConfigController_updateFieldMappings",
+        "summary": "Update TikTok-to-Bitrix24 field mapping configuration",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Updated field mappings"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      }
+    },
+    "/api/v1/config/rules": {
+      "get": {
+        "operationId": "ConfigController_getDealRules",
+        "summary": "Get Deal conversion rules",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Deal conversion rules list"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      },
+      "put": {
+        "operationId": "ConfigController_updateDealRules",
+        "summary": "Update Deal conversion rules",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated deal conversion rules"
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "operationId": "DashboardController_getDashboard",
+        "summary": "Open Web Dashboard UI",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Management"
+        ]
+      }
+    },
+    "/api/v1/analytics/conversion-rates": {
+      "get": {
+        "operationId": "AnalyticsController_getConversionRates",
+        "summary": "Get conversion rates from TikTok leads to Won Deals",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Return conversion rate metrics"
+          }
+        },
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/campaign-performance": {
+      "get": {
+        "operationId": "AnalyticsController_getCampaignPerformance",
+        "summary": "Get marketing performance metrics per campaign (CPL, ROI, etc.)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Return campaign performance statistics"
+          }
+        },
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/api/v1/reports/export": {
+      "get": {
+        "operationId": "AnalyticsController_exportReport",
+        "summary": "Export lead and conversion report in CSV (with UTF-8 BOM) or JSON format",
+        "parameters": [
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "csv",
+                "json"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "date_range",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d",
+                "all"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download CSV file or get JSON report"
+          }
+        },
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/api/v1/reports/scheduled-summary": {
+      "get": {
+        "operationId": "AnalyticsController_getScheduledSummary",
+        "summary": "Get automated daily/scheduled performance summary",
+        "description": "Returns real-time KPIs and top campaigns for automated reporting",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Scheduled report summary"
+          }
+        },
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/api/v1/reports/trigger-alert": {
+      "post": {
+        "operationId": "AnalyticsController_triggerAlert",
+        "summary": "Trigger automated notification/alert to Bitrix24",
+        "description": "Evaluates system metrics and alerts sales managers on Bitrix24 CRM",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Alert triggered successfully"
+          }
+        },
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "summary": "Health check endpoint",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Service is healthy"
+          },
+          "503": {
+            "description": "Service is unhealthy"
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "TikTok to Bitrix24 Integration API",
+    "description": "API documentation for TikTok Lead Generation & Bitrix24 CRM Synchronization",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "Webhooks",
+      "description": "TikTok and Bitrix24 inbound webhooks"
+    },
+    {
+      "name": "Management",
+      "description": "Leads, Deals and Configuration management"
+    },
+    {
+      "name": "Analytics",
+      "description": "Conversion rates, campaign performance, and reporting"
+    },
+    {
+      "name": "Health",
+      "description": "System health checks"
+    }
+  ],
+  "servers": [],
+  "components": {
+    "schemas": {}
+  }
+}

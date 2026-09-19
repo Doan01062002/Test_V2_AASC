@@ -136,9 +136,32 @@ export class Bitrix24Service {
     return !!res.result;
   }
 
+  async addTimelineComment(
+    entityType: 'lead' | 'deal',
+    entityId: number,
+    comment: string,
+  ): Promise<number | null> {
+    try {
+      const res = await this.callApi<number>('crm.timeline.comment.add', {
+        fields: {
+          ENTITY_ID: entityId,
+          ENTITY_TYPE: entityType,
+          COMMENT: comment,
+        },
+      });
+      return res.result;
+    } catch (err) {
+      this.logger.warn(
+        `Failed to add timeline comment to ${entityType} #${entityId}: ${(err as Error).message}`,
+      );
+      return null;
+    }
+  }
+
   async sendNotification(
     userId: string | number,
     message: string,
+    entityContext?: { type: 'lead' | 'deal'; id: number },
   ): Promise<boolean> {
     try {
       const res = await this.callApi('im.notify.system.add', {
@@ -148,8 +171,21 @@ export class Bitrix24Service {
       return !!res.result;
     } catch (err) {
       this.logger.warn(
-        `Failed to send Bitrix24 notification to user ${userId}: ${(err as Error).message}`,
+        `Failed to send Bitrix24 notification to user ${userId} via IM: ${(err as Error).message}`,
       );
+
+      // Graceful fallback to CRM timeline comment if entityContext is provided
+      if (entityContext && entityContext.id) {
+        this.logger.log(
+          `Posting notification as timeline comment to ${entityContext.type} #${entityContext.id}`,
+        );
+        const commentResult = await this.addTimelineComment(
+          entityContext.type,
+          entityContext.id,
+          `🔔 [THÔNG BÁO CHO USER ${userId}]: ${message}`,
+        );
+        return commentResult !== null;
+      }
       return false;
     }
   }
