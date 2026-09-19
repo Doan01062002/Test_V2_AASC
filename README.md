@@ -6,15 +6,20 @@
 
 ## 🎥 Video Demo Sản Phẩm
 
-- **File video trực tiếp trong repository**: [`docs/demo/Demo_01.mp4`](./docs/demo/Demo_01.mp4)
-- **Xem trực tiếp trên GitHub**: [Tải hoặc xem video Demo_01.mp4](https://github.com/Doan01062002/Test_V2_AASC/raw/main/docs/demo/Demo_01.mp4)
+[![Video Demo Tích hợp Google Sheets với Bitrix24 CRM](https://img.youtube.com/vi/QYbhUP7QNC4/maxresdefault.jpg)](https://youtu.be/QYbhUP7QNC4)
 
-> 💡 **Nội dung video demo**:
-> 1. Showcase giao diện **Web Admin Panel** trực quan (`http://localhost:3000/admin`).
-> 2. Thêm mới dữ liệu trên Google Sheet và kích hoạt nút **"Đồng bộ Ngay"**.
-> 3. Kiểm tra kết quả tạo Lead mới trên **Bitrix24 CRM** với đầy đủ thông tin chuẩn hóa.
-> 4. Kiểm tra Google Sheet: Tự động ghi nhận **Lead ID Bitrix24**, trạng thái **"Đã đồng bộ"** và thời gian đồng bộ.
-> 5. Kiểm thử cơ chế **chống trùng lặp dữ liệu (TC3)** và tính **Idempotent (SHA-256 Hash)** khi chạy lại.
+> 👆 *Nhấp vào ảnh trên để xem video trên YouTube (Full HD 1080p), hoặc lựa chọn các phương thức xem dưới đây:*
+
+- 📺 **Xem trên YouTube (Khuyên dùng)**: [https://youtu.be/QYbhUP7QNC4](https://youtu.be/QYbhUP7QNC4)
+- 🎬 **Xem trực tiếp trên GitHub Player (Không cần tải về)**: [Demo_01.mp4 trên GitHub](https://github.com/Doan01062002/Test_V2_AASC/blob/main/docs/demo/Demo_01.mp4)
+- 📁 **File video gốc trong repository**: [`docs/demo/Demo_01.mp4`](./docs/demo/Demo_01.mp4)
+
+### 💡 Các Nội Dung Nghiệp Vụ Trong Video Demo:
+1. **Tổng quan giao diện**: Trải nghiệm **Web Admin Dashboard** trực quan phục vụ tại route `/admin`.
+2. **Kích hoạt đồng bộ thủ công**: Thêm mới khách hàng trên Google Sheet và kích hoạt nút **"Đồng bộ Ngay"**.
+3. **Kiểm tra Bitrix24 CRM**: Xác nhận Lead mới được tạo thành công với đầy đủ thông tin chuẩn hóa (Họ tên, SĐT, Email, Công ty, Ngân sách, Nguồn).
+4. **Cập nhật hai chiều ngược về Sheet**: Google Sheet tự động ghi nhận **Lead ID Bitrix24**, trạng thái **"Đã đồng bộ"** và mốc thời gian cập nhật.
+5. **Kiểm thử chống trùng lặp (TC3) & Idempotency**: Nhận diện khách hàng đã tồn tại trên CRM để cập nhật thay vì tạo trùng lặp; bỏ qua dữ liệu không đổi chỉ trong ~800ms.
 
 ---
 

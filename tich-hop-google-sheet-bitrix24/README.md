@@ -6,8 +6,13 @@ Hệ thống tự động hóa đồng bộ dữ liệu hai chiều giữa **Goo
 
 ## 🎥 Video Demo Sản Phẩm
 
-- **Đường dẫn video trong repository**: [`../docs/demo/Demo_01.mp4`](../docs/demo/Demo_01.mp4)
-- **Xem trực tiếp trên GitHub**: [Tải hoặc xem video Demo_01.mp4](https://github.com/Doan01062002/Test_V2_AASC/raw/main/docs/demo/Demo_01.mp4)
+[![Video Demo Tích hợp Google Sheets với Bitrix24 CRM](https://img.youtube.com/vi/QYbhUP7QNC4/maxresdefault.jpg)](https://youtu.be/QYbhUP7QNC4)
+
+> 👆 *Nhấp vào ảnh trên để xem video trên YouTube (Full HD 1080p), hoặc lựa chọn các phương thức xem dưới đây:*
+
+- 📺 **Xem trên YouTube (Khuyên dùng)**: [https://youtu.be/QYbhUP7QNC4](https://youtu.be/QYbhUP7QNC4)
+- 🎬 **Xem trực tiếp trên GitHub Player (Không cần tải về)**: [Demo_01.mp4 trên GitHub](https://github.com/Doan01062002/Test_V2_AASC/blob/main/docs/demo/Demo_01.mp4)
+- 📁 **File video gốc trong repository**: [`../docs/demo/Demo_01.mp4`](../docs/demo/Demo_01.mp4)
 
 Video minh họa toàn bộ các luồng nghiệp vụ:
 - ✅ Thao tác trên **Web Admin Panel** (`http://localhost:3000/admin`).
