@@ -4,6 +4,20 @@ Hệ thống tự động hóa đồng bộ dữ liệu hai chiều giữa **Goo
 
 ---
 
+## 🎥 Video Demo Sản Phẩm
+
+- **Đường dẫn video trong repository**: [`../docs/demo/Demo_01.mp4`](../docs/demo/Demo_01.mp4)
+- **Xem trực tiếp trên GitHub**: [Tải hoặc xem video Demo_01.mp4](https://github.com/Doan01062002/Test_V2_AASC/raw/main/docs/demo/Demo_01.mp4)
+
+Video minh họa toàn bộ các luồng nghiệp vụ:
+- ✅ Thao tác trên **Web Admin Panel** (`http://localhost:3000/admin`).
+- ✅ Tạo mới khách hàng trên Google Sheet và bấm nút **"Đồng bộ Ngay"**.
+- ✅ Tự động ghi nhận **Lead ID Bitrix24** và cập nhật trạng thái **"Đã đồng bộ"** ngược về Google Sheet.
+- ✅ Kiểm chứng khách hàng xuất hiện chính xác trên **Bitrix24 CRM** (`/crm/lead/list/`).
+- ✅ Kiểm chứng cơ chế **chống trùng lặp (TC3)** và **Idempotency** khi dữ liệu không đổi.
+
+---
+
 ## 1. Tính Năng Nổi Bật
 
 ### 1.1. Chức năng Cốt lõi (MVP)
