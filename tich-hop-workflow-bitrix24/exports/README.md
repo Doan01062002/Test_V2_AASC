@@ -4,8 +4,8 @@ Thư mục này dùng để lưu trữ 2 file xuất (Export) từ Business Proc
 
 1. **`NghiPhep_3Cap.bpt`**: File mẫu quy trình Nghỉ phép 3 cấp phê duyệt.
    - **Trạng thái**: ✅ **ĐÃ HOÀN THÀNH & XUẤT THÀNH CÔNG TỪ BITRIX24**
-   - **Kích thước**: 3,156 bytes
-   - **Cấu trúc kỹ thuật**: Nén zlib chuẩn Bitrix24 chứa 3 cấp duyệt (`ApproveActivity`: Quản lý trực tiếp $\rightarrow$ Trưởng phòng Nhân sự $\rightarrow$ Giám đốc), khối rẽ nhánh điều kiện `IfElseActivity` (`Số ngày xin nghỉ <= Số ngày phép còn lại`), và khối `SocNetMessageActivity` gửi thông báo thành công đến người tạo.
+   - **Kích thước**: 3,333 bytes (Giải nén: 18,146 bytes)
+   - **Cấu trúc kỹ thuật**: Nén zlib chuẩn Bitrix24 chứa 3 cấp duyệt (`ApproveActivity`: Quản lý trực tiếp $\rightarrow$ Trưởng phòng Nhân sự $\rightarrow$ Giám đốc), khối rẽ nhánh điều kiện `IfElseActivity` (`Số ngày xin nghỉ <= Số ngày phép còn lại`), các khối `SocNetMessageActivity` thông báo từ chối khi vượt ngày phép hoặc khi bị từ chối tại các cấp duyệt, và khối `SocNetMessageActivity` gửi thông báo thành công đến người tạo.
 2. **`ChiPhiCongTac_4Cap.bpt`**: File mẫu quy trình Phê duyệt Chi phí đi công tác 4 cấp.
    - **Trạng thái**: ✅ **ĐÃ HOÀN THÀNH & XUẤT THÀNH CÔNG TỪ BITRIX24**
    - **Kích thước**: 3,841 bytes (Giải nén: 22,591 bytes)

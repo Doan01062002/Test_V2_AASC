@@ -130,7 +130,9 @@ Quy trình được xây dựng bằng **Quá trình kinh doanh liên tục (Seq
      - **Giá trị**: `{{Số ngày phép còn lại}}`
    - **Nhánh phải - Vượt phép**:
      - **Custom name**: `Vượt quá số ngày phép`
-     - Xử lý: Rẽ sang luồng từ chối do không đủ phép.
+     - **Khối tác vụ đính kèm**: `Thông báo: Từ chối do vượt ngày phép` (`SocNetMessageActivity`)
+       - Người nhận: `Tác giả;`
+       - Văn bản thông báo: `Đơn xin nghỉ phép của bạn bị từ chối do số ngày nghỉ vượt quá số ngày phép còn lại.`
 
 4. **Khối Phê Duyệt Cấp 2 (`Phê duyệt tài liệu` - Trưởng phòng Nhân sự)**:
    - **Vị trí**: Chèn dưới nhánh `Hợp lệ` của khối Điều kiện.
@@ -139,6 +141,7 @@ Quy trình được xây dựng bằng **Quá trình kinh doanh liên tục (Seq
    - **Phê duyệt kiểu**: `Bất kỳ người nào`
    - **Tên phân công**: `[Cấp 2] Trưởng phòng Nhân sự xem xét đơn nghỉ phép`
    - **Yêu cầu ghi chú**: `Có` (bắt buộc nêu lý do nếu từ chối).
+   - **Nhánh từ chối (`Không`)**: Thêm khối `Thông báo: Đơn nghỉ phép bị từ chối` gửi đến `Tác giả;`.
 
 5. **Khối Phê Duyệt Cấp 3 (`Phê duyệt tài liệu` - Giám đốc)**:
    - **Vị trí**: Chèn dưới nhánh `Có` của Cấp 2.
@@ -147,6 +150,7 @@ Quy trình được xây dựng bằng **Quá trình kinh doanh liên tục (Seq
    - **Phê duyệt kiểu**: `Bất kỳ người nào`
    - **Tên phân công**: `[Cấp 3] Giám đốc xem xét phê duyệt đơn nghỉ phép`
    - **Yêu cầu ghi chú**: `Có`.
+   - **Nhánh từ chối (`Không`)**: Thêm khối `Thông báo: Đơn nghỉ phép bị từ chối` gửi đến `Tác giả;`.
 
 6. **Khối Thông Báo Duyệt Thành Công (`Thông báo cho người dùng` - SocNetMessage)**:
    - **Vị trí**: Chèn dưới nhánh `Có` của Cấp 3.
@@ -156,8 +160,8 @@ Quy trình được xây dựng bằng **Quá trình kinh doanh liên tục (Seq
    - **Văn bản thông báo**: `Chúc mừng! Đơn xin nghỉ phép của bạn đã được phê duyệt thành công qua 3 cấp và được Ban Giám đốc thông qua.`
 
 7. **Kết Quả Xuất File**:
-   - File template: `exports/NghiPhep_3Cap.bpt` (Kích thước: 3,156 bytes, zlib binary Bitrix24 template).
-   - Đã kiểm tra cấu trúc bên trong: Chứa đầy đủ các Activity (`SequentialWorkflowActivity`, `ApproveActivity` Cấp 1/2/3, `IfElseActivity` Điều kiện so sánh ngày phép, `SocNetMessageActivity` Thông báo).
+   - File template: `exports/NghiPhep_3Cap.bpt` (Kích thước: 3,333 bytes, zlib binary Bitrix24 template, giải nén: 18,146 bytes).
+   - Đã kiểm tra cấu trúc bên trong: Chứa đầy đủ các Activity (`SequentialWorkflowActivity`, `ApproveActivity` Cấp 1/2/3, `IfElseActivity` Điều kiện so sánh ngày phép, các khối `SocNetMessageActivity` thông báo từ chối khi vượt ngày phép hoặc khi bị từ chối tại các cấp duyệt, cùng khối `SocNetMessageActivity` thông báo duyệt thành công).
 
 ---
 
