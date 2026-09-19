@@ -100,7 +100,7 @@ describe('Bitrix24Service', () => {
       expect(mockHttpClient.post).toHaveBeenCalledWith(
         'https://test.bitrix24.vn/rest/1/webhook_token/crm.lead.list',
         expect.objectContaining({
-          filter: { '=EMAIL': 'user@example.com' },
+          filter: { EMAIL: 'user@example.com' },
         }),
       );
     });

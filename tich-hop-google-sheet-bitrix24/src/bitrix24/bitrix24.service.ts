@@ -93,12 +93,16 @@ export class Bitrix24Service {
     if (email) {
       try {
         const res = await this.callMethod<BitrixLead[]>('crm.lead.list', {
-          filter: { '=EMAIL': email },
+          filter: { EMAIL: email },
           select: ['ID', 'TITLE', 'STATUS_ID', 'ASSIGNED_BY_ID', 'DATE_MODIFY', 'EMAIL', 'PHONE'],
           order: { ID: 'DESC' },
         });
         if (res.result && res.result.length > 0) {
-          return res.result[0];
+          const matched = res.result.find((l) => {
+            if (!Array.isArray(l.EMAIL)) return true;
+            return l.EMAIL.some((e: any) => e.VALUE?.toLowerCase() === email.toLowerCase());
+          });
+          if (matched) return matched;
         }
       } catch (e: any) {
         this.logger.warn(`Search lead by email (${email}) error: ${e.message}`);
@@ -108,12 +112,17 @@ export class Bitrix24Service {
     if (phone) {
       try {
         const res = await this.callMethod<BitrixLead[]>('crm.lead.list', {
-          filter: { '=PHONE': phone },
+          filter: { PHONE: phone },
           select: ['ID', 'TITLE', 'STATUS_ID', 'ASSIGNED_BY_ID', 'DATE_MODIFY', 'EMAIL', 'PHONE'],
           order: { ID: 'DESC' },
         });
         if (res.result && res.result.length > 0) {
-          return res.result[0];
+          const cleanPhone = phone.replace(/\D/g, '');
+          const matched = res.result.find((l) => {
+            if (!Array.isArray(l.PHONE)) return true;
+            return l.PHONE.some((p: any) => p.VALUE?.replace(/\D/g, '').endsWith(cleanPhone.slice(-9)));
+          });
+          if (matched) return matched;
         }
       } catch (e: any) {
         this.logger.warn(`Search lead by phone (${phone}) error: ${e.message}`);
