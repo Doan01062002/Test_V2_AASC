@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  sync-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bitrix24-sheets-sync
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - GOOGLE_SERVICE_ACCOUNT_FILE=/app/google-service-account.json
+      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID}
+      - GOOGLE_SHEET_NAME=${GOOGLE_SHEET_NAME:-Sheet1}
+      - BITRIX24_WEBHOOK_URL=${BITRIX24_WEBHOOK_URL}
+      - BITRIX24_OUTBOUND_TOKEN=${BITRIX24_OUTBOUND_TOKEN:-}
+      - SYNC_CRON_SCHEDULE=${SYNC_CRON_SCHEDULE:-*/15 * * * *}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-2}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
+      - BATCH_SIZE=${BATCH_SIZE:-50}
+      - DATABASE_FILE=/app/data/sync.sqlite
+    volumes:
+      - ./data:/app/data
+      - ./google-service-account.json:/app/google-service-account.json:ro
+      - ./mapping.json:/app/mapping.json

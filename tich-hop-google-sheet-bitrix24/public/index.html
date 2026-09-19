@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bitrix24 & Google Sheets Sync Hub</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen" x-data="syncDashboard()" x-init="init()" x-cloak>
+
+  <!-- Navigation Bar -->
+  <nav class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-200">
+            <i class="fa-solid fa-arrows-rotate"></i>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold text-slate-900 leading-tight">Bitrix24 & Sheets Sync Hub</h1>
+            <p class="text-xs text-slate-500">Đồng bộ tự động hai chiều Google Sheets ↔ CRM</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
+               :class="stats.isRunning ? 'bg-amber-100 text-amber-800 animate-pulse' : 'bg-emerald-100 text-emerald-800'">
+            <span class="w-2 h-2 rounded-full" :class="stats.isRunning ? 'bg-amber-500' : 'bg-emerald-500'"></span>
+            <span x-text="stats.isRunning ? 'Đang đồng bộ...' : 'Hệ thống sẵn sàng'"></span>
+          </div>
+          <button @click="refreshData()" class="p-2 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition" title="Làm mới">
+            <i class="fa-solid fa-arrow-rotate-right" :class="{ 'animate-spin': loading }"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- Top Action & Quick Trigger Banner -->
+    <div class="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div class="space-y-1 max-w-2xl">
+        <div class="inline-block px-2.5 py-0.5 rounded text-xs font-semibold bg-blue-500/30 text-blue-200 border border-blue-400/30">
+          NestJS 10 • API v4 • Rate Limiter (2 req/s) • Idempotent
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight">Kích hoạt Đồng bộ Thủ công</h2>
+        <p class="text-sm text-blue-100">
+          Tự động đọc Sheet, chuẩn hóa Số điện thoại & Email, chống trùng lặp dữ liệu, và đẩy Lead vào Bitrix24.
+        </p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+        <div class="flex items-center gap-4 bg-white/10 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-white/10 text-xs">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" x-model="syncOptions.full" class="rounded text-blue-500 focus:ring-blue-400">
+            <span>Force Full Sync</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" x-model="syncOptions.dryRun" class="rounded text-blue-500 focus:ring-blue-400">
+            <span>Dry Run</span>
+          </label>
+        </div>
+
+        <button @click="triggerSync()" :disabled="stats.isRunning || triggering"
+                class="px-5 py-3 rounded-xl font-semibold text-sm shadow-lg transition flex items-center justify-center gap-2 whitespace-nowrap"
+                :class="stats.isRunning || triggering ? 'bg-slate-400 text-slate-200 cursor-not-allowed' : 'bg-white text-blue-700 hover:bg-blue-50 hover:shadow-xl active:scale-95'">
+          <i class="fa-solid fa-bolt" :class="{ 'animate-spin': triggering }"></i>
+          <span x-text="triggering ? 'Đang gửi lệnh...' : (stats.isRunning ? 'Đang chạy...' : 'Đồng bộ Ngay')"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Alert / Toast Banner -->
+    <div x-show="toast.visible" x-transition class="p-4 rounded-xl text-sm font-medium flex items-center justify-between shadow-sm border"
+         :class="toast.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-red-50 text-red-800 border-red-200'">
+      <div class="flex items-center gap-2">
+        <i :class="toast.type === 'success' ? 'fa-solid fa-circle-check text-emerald-500' : 'fa-solid fa-circle-exclamation text-red-500'"></i>
+        <span x-text="toast.message"></span>
+      </div>
+      <button @click="toast.visible = false" class="text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+
+    <!-- Statistics Overview Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <!-- Total Runs -->
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-medium mb-2">
+          <span>TỔNG LẦN CHẠY</span>
+          <i class="fa-solid fa-clock-rotate-left text-blue-500 text-base"></i>
+        </div>
+        <div class="text-2xl font-bold text-slate-900" x-text="stats.totalRuns">0</div>
+        <div class="text-xs text-slate-400 mt-1">Lịch sử đồng bộ</div>
+      </div>
+
+      <!-- Created -->
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-medium mb-2">
+          <span>LEADS TẠO MỚI</span>
+          <i class="fa-solid fa-user-plus text-emerald-500 text-base"></i>
+        </div>
+        <div class="text-2xl font-bold text-emerald-600" x-text="stats.totalCreated">0</div>
+        <div class="text-xs text-emerald-600/70 mt-1">Thêm vào Bitrix24</div>
+      </div>
+
+      <!-- Updated -->
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-medium mb-2">
+          <span>LEADS CẬP NHẬT</span>
+          <i class="fa-solid fa-user-pen text-indigo-500 text-base"></i>
+        </div>
+        <div class="text-2xl font-bold text-indigo-600" x-text="stats.totalUpdated">0</div>
+        <div class="text-xs text-indigo-600/70 mt-1">Trùng lặp / Cập nhật</div>
+      </div>
+
+      <!-- Skipped -->
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-medium mb-2">
+          <span>BỎ QUA (UNCHANGED)</span>
+          <i class="fa-solid fa-forward-step text-slate-400 text-base"></i>
+        </div>
+        <div class="text-2xl font-bold text-slate-700" x-text="stats.totalSkipped">0</div>
+        <div class="text-xs text-slate-400 mt-1">Khớp SHA-256 Hash</div>
+      </div>
+
+      <!-- Errors -->
+      <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm col-span-2 lg:col-span-1">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-medium mb-2">
+          <span>LỖI GẶP PHẢI</span>
+          <i class="fa-solid fa-triangle-exclamation text-rose-500 text-base"></i>
+        </div>
+        <div class="text-2xl font-bold text-rose-600" x-text="stats.totalErrors">0</div>
+        <div class="text-xs text-rose-500 mt-1">Ghi vào cột Thông báo lỗi</div>
+      </div>
+    </div>
+
+    <!-- Tabs: History & Field Mapping -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50/50">
+        <div class="flex gap-2">
+          <button @click="activeTab = 'history'" class="px-4 py-2 rounded-lg text-sm font-semibold transition"
+                  :class="activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-600 hover:text-slate-900'">
+            <i class="fa-solid fa-list-check mr-1.5"></i> Lịch Sử Đồng Bộ (Sync History)
+          </button>
+          <button @click="activeTab = 'mapping'" class="px-4 py-2 rounded-lg text-sm font-semibold transition"
+                  :class="activeTab === 'mapping' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-600 hover:text-slate-900'">
+            <i class="fa-solid fa-sliders mr-1.5"></i> Cấu Hình Mapping (JSON Editor)
+          </button>
+        </div>
+        <span class="text-xs text-slate-400 font-mono" x-show="stats.lastSyncAt">
+          Lần cuối: <span x-text="new Date(stats.lastSyncAt).toLocaleString('vi-VN')"></span>
+        </span>
+      </div>
+
+      <!-- TAB 1: SYNC HISTORY -->
+      <div x-show="activeTab === 'history'" class="p-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 text-xs uppercase font-semibold text-slate-500 bg-slate-50/80">
+                <th class="py-3 px-4">Mã Tác Vụ (Job ID)</th>
+                <th class="py-3 px-4">Kích Hoạt</th>
+                <th class="py-3 px-4">Trạng Thái</th>
+                <th class="py-3 px-4 text-center">Tổng Dòng</th>
+                <th class="py-3 px-4 text-center">Tạo Mới</th>
+                <th class="py-3 px-4 text-center">Cập Nhật</th>
+                <th class="py-3 px-4 text-center">Bỏ Qua</th>
+                <th class="py-3 px-4 text-center">Lỗi</th>
+                <th class="py-3 px-4 text-right">Thời Lượng</th>
+                <th class="py-3 px-4 text-right">Thời Gian</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <template x-for="log in logs" :key="log.id">
+                <tr class="hover:bg-slate-50/60 transition font-medium">
+                  <td class="py-3.5 px-4 font-mono text-xs text-slate-700" x-text="log.jobId"></td>
+                  <td class="py-3.5 px-4">
+                    <span class="px-2 py-0.5 rounded text-xs uppercase tracking-wide font-semibold"
+                          :class="{
+                            'bg-purple-100 text-purple-700': log.triggerType === 'cron',
+                            'bg-blue-100 text-blue-700': log.triggerType === 'manual',
+                            'bg-amber-100 text-amber-700': log.triggerType === 'cli',
+                            'bg-emerald-100 text-emerald-700': log.triggerType === 'webhook'
+                          }" x-text="log.triggerType"></span>
+                  </td>
+                  <td class="py-3.5 px-4">
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1"
+                          :class="{
+                            'bg-emerald-100 text-emerald-800': log.status === 'SUCCESS',
+                            'bg-amber-100 text-amber-800': log.status === 'PARTIAL_SUCCESS',
+                            'bg-rose-100 text-rose-800': log.status === 'FAILED'
+                          }">
+                      <span class="w-1.5 h-1.5 rounded-full"
+                            :class="{
+                              'bg-emerald-500': log.status === 'SUCCESS',
+                              'bg-amber-500': log.status === 'PARTIAL_SUCCESS',
+                              'bg-rose-500': log.status === 'FAILED'
+                            }"></span>
+                      <span x-text="log.status"></span>
+                    </span>
+                  </td>
+                  <td class="py-3.5 px-4 text-center font-semibold text-slate-800" x-text="log.totalRows"></td>
+                  <td class="py-3.5 px-4 text-center text-emerald-600 font-bold" x-text="log.createdCount"></td>
+                  <td class="py-3.5 px-4 text-center text-indigo-600 font-bold" x-text="log.updatedCount"></td>
+                  <td class="py-3.5 px-4 text-center text-slate-500" x-text="log.skippedCount"></td>
+                  <td class="py-3.5 px-4 text-center font-bold" :class="log.errorCount > 0 ? 'text-rose-600' : 'text-slate-400'" x-text="log.errorCount"></td>
+                  <td class="py-3.5 px-4 text-right font-mono text-xs text-slate-500" x-text="log.durationMs + ' ms'"></td>
+                  <td class="py-3.5 px-4 text-right text-xs text-slate-500" x-text="new Date(log.createdAt).toLocaleString('vi-VN')"></td>
+                </tr>
+              </template>
+              <tr x-show="logs.length === 0">
+                <td colspan="10" class="py-8 text-center text-slate-400 italic">
+                  Chưa có lịch sử đồng bộ nào. Nhấn "Đồng bộ Ngay" để kích hoạt lần chạy đầu tiên.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: MAPPING EDITOR -->
+      <div x-show="activeTab === 'mapping'" class="p-6 space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">Cấu hình Quy tắc Ánh xạ Cột (Mapping Rules)</h3>
+            <p class="text-xs text-slate-500">Chỉnh sửa JSON cấu hình ánh xạ giữa các cột trong Sheet và trường Bitrix24.</p>
+          </div>
+          <div class="flex gap-2">
+            <button @click="loadMapping()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+              <i class="fa-solid fa-arrow-rotate-left mr-1"></i> Tải lại
+            </button>
+            <button @click="saveMapping()" :disabled="savingMapping" class="px-4 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm transition">
+              <i class="fa-solid fa-floppy-disk mr-1"></i>
+              <span x-text="savingMapping ? 'Đang lưu...' : 'Lưu Thay Đổi'"></span>
+            </button>
+          </div>
+        </div>
+
+        <textarea x-model="mappingJsonText" rows="18"
+                  class="w-full font-mono text-xs p-4 bg-slate-900 text-emerald-400 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"></textarea>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function syncDashboard() {
+      return {
+        activeTab: 'history',
+        loading: false,
+        triggering: false,
+        savingMapping: false,
+        stats: {
+          totalRuns: 0,
+          totalCreated: 0,
+          totalUpdated: 0,
+          totalSkipped: 0,
+          totalErrors: 0,
+          lastSyncAt: null,
+          lastSyncStatus: 'NONE',
+          isRunning: false
+        },
+        logs: [],
+        mappingJsonText: '',
+        syncOptions: {
+          full: false,
+          dryRun: false
+        },
+        toast: {
+          visible: false,
+          type: 'success',
+          message: ''
+        },
+
+        showToast(message, type = 'success') {
+          this.toast = { visible: true, type, message };
+          setTimeout(() => { this.toast.visible = false; }, 6000);
+        },
+
+        async init() {
+          await this.refreshData();
+          await this.loadMapping();
+          // Auto poll status every 5 seconds
+          setInterval(() => {
+            this.checkStatus();
+          }, 5000);
+        },
+
+        async refreshData() {
+          this.loading = true;
+          try {
+            const [statsRes, logsRes] = await Promise.all([
+              fetch('/api/admin/stats').then(r => r.json()),
+              fetch('/api/admin/logs').then(r => r.json())
+            ]);
+            this.stats = statsRes;
+            this.logs = logsRes;
+          } catch (e) {
+            console.error('Error fetching dashboard data:', e);
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        async checkStatus() {
+          try {
+            const stats = await fetch('/api/admin/stats').then(r => r.json());
+            const wasRunning = this.stats.isRunning;
+            this.stats = stats;
+            // If just finished running, reload logs
+            if (wasRunning && !stats.isRunning) {
+              await this.refreshData();
+            }
+          } catch (e) {}
+        },
+
+        async triggerSync() {
+          this.triggering = true;
+          try {
+            const res = await fetch('/api/admin/trigger-sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                full: this.syncOptions.full,
+                dryRun: this.syncOptions.dryRun
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.message || 'Lỗi khi kích hoạt đồng bộ');
+            }
+            this.showToast(`Đồng bộ thành công! Tạo mới: ${data.createdCount}, Cập nhật: ${data.updatedCount}, Bỏ qua: ${data.skippedCount}`, 'success');
+            await this.refreshData();
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          } finally {
+            this.triggering = false;
+          }
+        },
+
+        async loadMapping() {
+          try {
+            const mapping = await fetch('/api/admin/mapping').then(r => r.json());
+            this.mappingJsonText = JSON.stringify(mapping, null, 2);
+          } catch (e) {
+            console.error('Error loading mapping:', e);
+          }
+        },
+
+        async saveMapping() {
+          this.savingMapping = true;
+          try {
+            const parsed = JSON.parse(this.mappingJsonText);
+            const res = await fetch('/api/admin/mapping', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(parsed)
+            });
+            const data = await res.json();
+            if (res.ok) {
+              this.showToast('Cấu hình mapping đã được lưu thành công!', 'success');
+            } else {
+              throw new Error(data.message || 'Lưu thất bại');
+            }
+          } catch (e) {
+            this.showToast('JSON không hợp lệ: ' + e.message, 'error');
+          } finally {
+            this.savingMapping = false;
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>
