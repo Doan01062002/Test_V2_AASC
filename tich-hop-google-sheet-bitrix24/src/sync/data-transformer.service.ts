@@ -33,16 +33,28 @@ export class DataTransformerService {
   };
 
   normalizePhone(phone?: string | number): string {
-    if (!phone) return '';
+    if (phone === undefined || phone === null) return '';
     let cleaned = String(phone).trim();
     // Remove all non-digits except leading +
     cleaned = cleaned.replace(/[^\d+]/g, '');
+    if (!cleaned) return '';
 
-    // Vietnam phone number conversion (+849... -> 09..., 849... -> 09...)
+    // Vietnam phone number conversion (+84..., 84...)
     if (cleaned.startsWith('+84')) {
-      cleaned = '0' + cleaned.slice(3);
-    } else if (cleaned.startsWith('84') && cleaned.length >= 11) {
-      cleaned = '0' + cleaned.slice(2);
+      let rest = cleaned.slice(3);
+      if (rest.startsWith('0')) rest = rest.slice(1);
+      return '0' + rest;
+    }
+    if (cleaned.startsWith('84') && cleaned.length >= 11) {
+      let rest = cleaned.slice(2);
+      if (rest.startsWith('0')) rest = rest.slice(1);
+      return '0' + rest;
+    }
+
+    // Google Sheets often strips leading 0 when storing phone numbers as numeric values
+    // e.g. 912345678 -> 0912345678 (Vietnamese mobile prefixes: 3, 5, 7, 8, 9)
+    if (/^[35789]\d{8}$/.test(cleaned)) {
+      return '0' + cleaned;
     }
 
     return cleaned;
@@ -197,12 +209,24 @@ export class DataTransformerService {
       for (const fieldRule of mappingFields) {
         const val = rowData[fieldRule.sheetColumn];
         if (val !== undefined && val !== '') {
-          if (fieldRule.type === 'string') {
-            fields[fieldRule.bitrixField] = String(val).trim();
-          } else if (fieldRule.type === 'currency') {
-            fields[fieldRule.bitrixField] = this.parseCurrency(val);
-          } else if (fieldRule.type === 'enum' && fieldRule.enumMap) {
-            fields[fieldRule.bitrixField] = this.mapStatusToBitrix(val, fieldRule.enumMap);
+          const bitrixField = fieldRule.bitrixField;
+          const type = fieldRule.type || 'string';
+
+          if (type === 'phone' || bitrixField === 'PHONE') {
+            const p = this.normalizePhone(val);
+            if (p) fields['PHONE'] = [{ VALUE: p, VALUE_TYPE: 'WORK' }];
+          } else if (type === 'email' || bitrixField === 'EMAIL') {
+            const e = this.normalizeEmail(val);
+            if (e) fields['EMAIL'] = [{ VALUE: e, VALUE_TYPE: 'WORK' }];
+          } else if (type === 'currency') {
+            fields[bitrixField] = this.parseCurrency(val);
+          } else if (type === 'number') {
+            const num = parseFloat(String(val).replace(/,/g, '').trim());
+            fields[bitrixField] = isNaN(num) ? 0 : num;
+          } else if (type === 'enum' && fieldRule.enumMap) {
+            fields[bitrixField] = this.mapStatusToBitrix(val, fieldRule.enumMap);
+          } else {
+            fields[bitrixField] = String(val).trim();
           }
         }
       }

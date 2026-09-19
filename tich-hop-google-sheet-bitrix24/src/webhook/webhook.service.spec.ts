@@ -73,6 +73,55 @@ describe('WebhookService (Bitrix24 Outbound -> Sheet)', () => {
     expect(() => service.validateToken(payload)).toThrow(UnauthorizedException);
   });
 
+  it('should return IGNORED if no lead ID in payload', async () => {
+    const payload = {
+      event: 'ONCRMLEADUPDATE',
+      data: { FIELDS: { ID: '' } },
+      auth: { application_token: 'valid_secret_token' },
+    };
+    const result = await service.handleBitrixLeadEvent(payload);
+    expect(result.status).toBe('IGNORED');
+  });
+
+  it('should return NOT_FOUND if lead does not exist in Bitrix', async () => {
+    const payload = {
+      event: 'ONCRMLEADUPDATE',
+      data: { FIELDS: { ID: 999 } },
+      auth: { application_token: 'valid_secret_token' },
+    };
+    mockBitrix24.getLead.mockResolvedValue(null);
+    const result = await service.handleBitrixLeadEvent(payload);
+    expect(result.status).toBe('NOT_FOUND');
+  });
+
+  it('should return ERROR if spreadsheet ID is not configured', async () => {
+    const payload = {
+      event: 'ONCRMLEADUPDATE',
+      data: { FIELDS: { ID: 501 } },
+      auth: { application_token: 'valid_secret_token' },
+    };
+    mockBitrix24.getLead.mockResolvedValue({ ID: 501, STATUS_ID: 'NEW' });
+    mockConfigService.get.mockImplementation((k: string) => (k === 'bitrix24.outboundToken' ? 'valid_secret_token' : null));
+    const result = await service.handleBitrixLeadEvent(payload);
+    expect(result.status).toBe('ERROR');
+  });
+
+  it('should return SKIPPED if lead does not match any row on sheet', async () => {
+    const payload = {
+      event: 'ONCRMLEADUPDATE',
+      data: { FIELDS: { ID: 888 } },
+      auth: { application_token: 'valid_secret_token' },
+    };
+    mockBitrix24.getLead.mockResolvedValue({ ID: 888, STATUS_ID: 'NEW' });
+    mockGoogleSheets.readSheetData.mockResolvedValue({
+      headers: ['Tên', TRACKING_HEADERS.LEAD_ID],
+      rows: [],
+      trackingIndices: {},
+    });
+    const result = await service.handleBitrixLeadEvent(payload);
+    expect(result.status).toBe('SKIPPED');
+  });
+
   it('should update sheet row when lead status is modified in Bitrix24', async () => {
     const payload = {
       event: 'ONCRMLEADUPDATE',
@@ -120,6 +169,7 @@ describe('WebhookService (Bitrix24 Outbound -> Sheet)', () => {
       'Đang liên hệ', // Mapped from 'IN_PROCESS'
     );
     expect(mockGoogleSheets.batchUpdateTracking).toHaveBeenCalled();
+    expect(mockSyncHashRepo.save).toHaveBeenCalled();
   });
 
   it('should avoid loop if status is already the same', async () => {

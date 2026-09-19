@@ -1,7 +1,78 @@
 {
+  "description": "Cấu hình quy tắc ánh xạ giữa các cột Google Sheet và các trường Bitrix24 CRM",
   "fields": [
     {
-      "sheetColumn": "Email"
+      "sheetColumn": "Tên khách hàng",
+      "bitrixField": "TITLE",
+      "type": "string",
+      "description": "Tiêu đề lead / Tên khách hàng tiềm năng"
+    },
+    {
+      "sheetColumn": "Email",
+      "bitrixField": "EMAIL",
+      "type": "email",
+      "description": "Địa chỉ thư điện tử của lead"
+    },
+    {
+      "sheetColumn": "Số điện thoại",
+      "bitrixField": "PHONE",
+      "type": "phone",
+      "description": "Số điện thoại liên hệ (chuẩn hóa tự động)"
+    },
+    {
+      "sheetColumn": "Công ty",
+      "bitrixField": "COMPANY_TITLE",
+      "type": "string",
+      "description": "Tên công ty hoặc tổ chức"
+    },
+    {
+      "sheetColumn": "Nguồn lead",
+      "bitrixField": "SOURCE_DESCRIPTION",
+      "type": "string",
+      "description": "Nguồn chiến dịch marketing hoặc UTM source"
+    },
+    {
+      "sheetColumn": "Ngân sách dự kiến",
+      "bitrixField": "OPPORTUNITY",
+      "type": "currency",
+      "description": "Ngân sách hoặc giá trị cơ hội (VND)"
+    },
+    {
+      "sheetColumn": "Trạng thái",
+      "bitrixField": "STATUS_ID",
+      "type": "enum",
+      "description": "Trạng thái xử lý lead trong Bitrix24 CRM",
+      "enumMap": {
+        "mới": "NEW",
+        "new": "NEW",
+        "chờ xử lý": "NEW",
+        "đang liên hệ": "IN_PROCESS",
+        "in process": "IN_PROCESS",
+        "đạt tiêu chuẩn": "QUALIFIED",
+        "qualified": "QUALIFIED",
+        "chuyển giao": "CONVERTED",
+        "converted": "CONVERTED",
+        "không tiềm năng": "JUNK",
+        "junk": "JUNK"
+      }
+    },
+    {
+      "sheetColumn": "Người phụ trách",
+      "bitrixField": "ASSIGNED_BY_ID",
+      "type": "number",
+      "description": "ID người dùng Bitrix24 phụ trách lead"
+    },
+    {
+      "sheetColumn": "Ghi chú",
+      "bitrixField": "COMMENTS",
+      "type": "string",
+      "description": "Ghi chú nội dung trao đổi hoặc nhu cầu"
+    },
+    {
+      "sheetColumn": "Chi nhánh",
+      "bitrixField": "UF_CRM_BRANCH",
+      "type": "string",
+      "description": "Trường tùy chỉnh mở rộng: Tên chi nhánh"
     }
   ]
 }

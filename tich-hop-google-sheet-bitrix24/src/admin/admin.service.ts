@@ -90,12 +90,14 @@ export class AdminService {
 
     await this.mappingConfigRepo.save(dbConfig);
 
-    // Also update local file if writable
-    try {
-      const filePath = path.resolve(process.cwd(), 'mapping.json');
-      fs.writeFileSync(filePath, jsonStr, 'utf-8');
-    } catch (e: any) {
-      this.logger.warn(`Could not overwrite mapping.json: ${e.message}`);
+    // Also update local file if writable and not in test environment
+    if (process.env.NODE_ENV !== 'test') {
+      try {
+        const filePath = path.resolve(process.cwd(), 'mapping.json');
+        fs.writeFileSync(filePath, jsonStr, 'utf-8');
+      } catch (e: any) {
+        this.logger.warn(`Could not overwrite mapping.json: ${e.message}`);
+      }
     }
 
     return { success: true, message: 'Mapping updated successfully' };

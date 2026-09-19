@@ -99,9 +99,13 @@ export class SyncEngineService {
     const jobId = `sync_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const triggerType = options.triggerType || SyncTriggerType.MANUAL;
     const spreadsheetId =
-      options.spreadsheetId || this.configService.get<string>('google.spreadsheetId') || '';
+      options.spreadsheetId !== undefined
+        ? options.spreadsheetId
+        : (this.configService.get<string>('google.spreadsheetId') || '');
     const sheetName =
-      options.sheetName || this.configService.get<string>('google.sheetName') || 'Sheet1';
+      options.sheetName !== undefined
+        ? options.sheetName
+        : (this.configService.get<string>('google.sheetName') || 'Sheet1');
 
     let totalRows = 0;
     let createdCount = 0;

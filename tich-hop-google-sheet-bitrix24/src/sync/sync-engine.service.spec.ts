@@ -340,4 +340,80 @@ describe('SyncEngineService (Core Test Cases TC1 - TC5)', () => {
       expect(mockBitrix24.updateLead).not.toHaveBeenCalled();
     });
   });
+
+  describe('Operational & Edge Cases', () => {
+    it('should report isRunning accurately', () => {
+      expect(service.isRunning()).toBe(false);
+    });
+
+    it('should load mapping rules from database when configured', async () => {
+      mockMappingConfigRepo.findOne.mockResolvedValue({
+        configJson: JSON.stringify({
+          fields: [{ sheetColumn: 'Tên', bitrixField: 'TITLE' }],
+        }),
+      });
+
+      const rules = await service.loadMappingRules();
+      expect(rules).toHaveLength(1);
+      expect(rules[0].bitrixField).toBe('TITLE');
+    });
+
+    it('should update existing prevHashRecord on successful sync', async () => {
+      mockGoogleSheets.readSheetData.mockResolvedValue({
+        headers: ['Tên khách hàng', 'Email', 'Trạng thái đồng bộ'],
+        rows: [
+          {
+            rowNumber: 2,
+            data: { 'Tên khách hàng': 'Nguyễn Văn An', 'Email': 'an@example.com' },
+            rawValues: ['Nguyễn Văn An', 'an@example.com'],
+          },
+        ],
+        trackingIndices: { syncStatusCol: 2, leadIdCol: 3, lastSyncedAtCol: 4, errorMessageCol: 5 },
+      });
+
+      mockBitrix24.findLeadByEmailOrPhone.mockResolvedValue(null);
+      mockBitrix24.createLead.mockResolvedValue(601);
+
+      const existingRecord = { id: 10, contentHash: 'old_hash', leadId: 500, status: 'SYNCED' };
+      mockSyncHashRepo.findOne.mockResolvedValue(existingRecord);
+
+      const summary = await service.executeSync({ forceFullSync: true });
+      expect(summary.createdCount).toBe(1);
+      expect(mockSyncHashRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 10,
+          leadId: 601,
+        }),
+      );
+    });
+
+    it('should handle dry-run mode without modifying sheet or DB', async () => {
+      mockGoogleSheets.readSheetData.mockResolvedValue({
+        headers: ['Tên khách hàng', 'Email'],
+        rows: [
+          {
+            rowNumber: 2,
+            data: { 'Tên khách hàng': 'Dry Run Test', 'Email': 'dry@example.com' },
+            rawValues: ['Dry Run Test', 'dry@example.com'],
+          },
+        ],
+        trackingIndices: { syncStatusCol: 2, leadIdCol: 3, lastSyncedAtCol: 4, errorMessageCol: 5 },
+      });
+
+      mockBitrix24.findLeadByEmailOrPhone.mockResolvedValue(null);
+      mockBitrix24.createLead.mockResolvedValue(701);
+
+      const summary = await service.executeSync({ dryRun: true });
+      expect(summary.createdCount).toBe(1);
+      expect(mockGoogleSheets.batchUpdateTracking).not.toHaveBeenCalled();
+      expect(mockSyncHashRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('should record error when spreadsheet ID is empty', async () => {
+      const summary = await service.executeSync({ spreadsheetId: '' });
+      expect(summary.status).toBe(SyncJobStatus.FAILED);
+      expect(summary.errorCount).toBe(1);
+      expect(summary.errors[0].error).toContain('Google Spreadsheet ID is not configured');
+    });
+  });
 });

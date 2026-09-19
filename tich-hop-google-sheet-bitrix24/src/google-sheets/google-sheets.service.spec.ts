@@ -168,6 +168,34 @@ describe('GoogleSheetsService', () => {
       expect(result.rows[1].rowNumber).toBe(3);
       expect(result.rows[1].data[TRACKING_HEADERS.LEAD_ID]).toBe('123');
     });
+
+    it('should fallback to first sheet if range parse fails', async () => {
+      mockSheetsClient.spreadsheets.get.mockResolvedValue({
+        data: { sheets: [{ properties: { title: 'Trang tính1' } }] },
+      });
+      mockSheetsClient.spreadsheets.values.get
+        .mockRejectedValueOnce(new Error("Unable to parse range: 'Invalid'!A1:ZZ"))
+        .mockResolvedValueOnce({
+          data: {
+            values: [
+              ['Tên khách hàng', 'Email'],
+              ['Nguyễn Văn A', 'a@example.com'],
+            ],
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            values: [
+              ['Tên khách hàng', 'Email', 'Trạng thái đồng bộ', 'Lead ID Bitrix24', 'Thời gian đồng bộ cuối', 'Thông báo lỗi'],
+            ],
+          },
+        });
+      mockSheetsClient.spreadsheets.values.update.mockResolvedValue({ data: {} });
+
+      const result = await service.readSheetData('test-id', 'Invalid');
+      expect(result.targetSheet).toBe('Trang tính1');
+      expect(result.rows).toHaveLength(1);
+    });
   });
 
   describe('batchUpdateTracking', () => {
@@ -204,6 +232,56 @@ describe('GoogleSheetsService', () => {
             },
           ],
         },
+      });
+    });
+
+    it('should update individual cells when tracking columns are not consecutive', async () => {
+      mockSheetsClient.spreadsheets.values.batchUpdate.mockResolvedValue({ data: {} });
+
+      const updates = [
+        {
+          rowNumber: 2,
+          syncStatus: 'Lỗi',
+          leadId: 101,
+          lastSyncedAt: '2026-09-19T12:00:00Z',
+          errorMessage: 'Some error',
+        },
+      ];
+
+      const trackingIndices = {
+        syncStatusCol: 1, // B
+        leadIdCol: 3,      // D
+        lastSyncedAtCol: 5, // F
+        errorMessageCol: 7, // H
+      };
+
+      await service.batchUpdateTracking('test-id', 'Sheet1', updates, trackingIndices);
+
+      expect(mockSheetsClient.spreadsheets.values.batchUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          spreadsheetId: 'test-id',
+          requestBody: expect.objectContaining({
+            data: expect.arrayContaining([
+              { range: "'Sheet1'!B2", values: [['Lỗi']] },
+              { range: "'Sheet1'!D2", values: [[101]] },
+              { range: "'Sheet1'!F2", values: [['2026-09-19T12:00:00Z']] },
+              { range: "'Sheet1'!H2", values: [['Some error']] },
+            ]),
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('updateCell', () => {
+    it('should update a single cell with given value', async () => {
+      mockSheetsClient.spreadsheets.values.update.mockResolvedValue({ data: {} });
+      await service.updateCell('test-id', 'Sheet1', 1, 2, 'Đang liên hệ');
+      expect(mockSheetsClient.spreadsheets.values.update).toHaveBeenCalledWith({
+        spreadsheetId: 'test-id',
+        range: "'Sheet1'!B2",
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [['Đang liên hệ']] },
       });
     });
   });

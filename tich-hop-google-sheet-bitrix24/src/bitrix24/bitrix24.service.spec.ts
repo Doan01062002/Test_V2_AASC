@@ -67,6 +67,25 @@ describe('Bitrix24Service', () => {
     });
   });
 
+  describe('getLead', () => {
+    it('should retrieve a lead by ID', async () => {
+      mockHttpClient.post.mockResolvedValue({
+        data: { result: { ID: '105', TITLE: 'Lead 105', STATUS_ID: 'NEW' } },
+      });
+
+      const lead = await service.getLead(105);
+      expect(lead).toBeDefined();
+      expect(lead?.ID).toBe('105');
+      expect(lead?.STATUS_ID).toBe('NEW');
+    });
+
+    it('should return null when getLead fails', async () => {
+      mockHttpClient.post.mockRejectedValue(new Error('Network error'));
+      const lead = await service.getLead(999);
+      expect(lead).toBeNull();
+    });
+  });
+
   describe('findLeadByEmailOrPhone', () => {
     it('should find lead by email', async () => {
       mockHttpClient.post.mockResolvedValueOnce({
@@ -112,6 +131,24 @@ describe('Bitrix24Service', () => {
       const lead = await service.findLeadByEmailOrPhone('notfound@example.com', '0000000000');
       expect(lead).toBeNull();
     });
+
+    it('should handle search errors gracefully without crashing', async () => {
+      mockHttpClient.post.mockRejectedValue(new Error('Search failed'));
+      const lead = await service.findLeadByEmailOrPhone('error@example.com', '0912345678');
+      expect(lead).toBeNull();
+    });
+  });
+
+  describe('Base URL and error handling', () => {
+    it('should append slash to baseUrl if missing', () => {
+      service.setBaseUrlForTest('https://custom.bitrix24.vn/rest/1/token');
+      expect((service as any).baseUrl).toBe('https://custom.bitrix24.vn/rest/1/token/');
+    });
+
+    it('should throw error when webhook URL is not configured', async () => {
+      service.setBaseUrlForTest('');
+      await expect(service.callMethod('crm.lead.get')).rejects.toThrow('Bitrix24 Webhook URL is not configured.');
+    });
   });
 
   describe('Exponential backoff retry', () => {
@@ -139,6 +176,11 @@ describe('Bitrix24Service', () => {
   });
 
   describe('batchExecute', () => {
+    it('should return empty object if commands is empty', async () => {
+      const res = await service.batchExecute({});
+      expect(res).toEqual({});
+    });
+
     it('should execute batch commands and return results', async () => {
       mockHttpClient.post.mockResolvedValue({
         data: {

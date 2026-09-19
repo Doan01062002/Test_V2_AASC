@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import * as fs from 'fs';
 import { MappingConfig } from '../database/entities/mapping-config.entity';
 import { SyncLog } from '../database/entities/sync-log.entity';
 import { SyncEngineService } from '../sync/sync-engine.service';
@@ -10,8 +11,11 @@ describe('AdminService', () => {
   let mockSyncLogRepo: any;
   let mockMappingConfigRepo: any;
   let mockSyncEngine: any;
+  let fsWriteSpy: jest.SpyInstance;
 
   beforeEach(async () => {
+    fsWriteSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+
     mockSyncLogRepo = {
       find: jest.fn().mockResolvedValue([
         {
@@ -52,6 +56,10 @@ describe('AdminService', () => {
     service = module.get<AdminService>(AdminService);
   });
 
+  afterEach(() => {
+    fsWriteSpy.mockRestore();
+  });
+
   it('should calculate stats correctly', async () => {
     const stats = await service.getStats();
     expect(stats.totalRuns).toBe(1);
@@ -73,9 +81,23 @@ describe('AdminService', () => {
     expect(mapping.fields[0].sheetColumn).toBe('Tên');
   });
 
-  it('should save updated mapping', async () => {
+  it('should fallback to local file when database mapping is empty', async () => {
+    mockMappingConfigRepo.findOne.mockResolvedValue(null);
+    const mapping = await service.getMapping();
+    expect(mapping.fields).toBeDefined();
+  });
+
+  it('should save updated mapping with existing config', async () => {
     const res = await service.updateMapping({ fields: [{ sheetColumn: 'Email' }] });
     expect(res.success).toBe(true);
+    expect(mockMappingConfigRepo.save).toHaveBeenCalled();
+  });
+
+  it('should create new config record if none exists in db', async () => {
+    mockMappingConfigRepo.findOne.mockResolvedValue(null);
+    const res = await service.updateMapping({ fields: [{ sheetColumn: 'Phone' }] });
+    expect(res.success).toBe(true);
+    expect(mockMappingConfigRepo.create).toHaveBeenCalled();
     expect(mockMappingConfigRepo.save).toHaveBeenCalled();
   });
 });

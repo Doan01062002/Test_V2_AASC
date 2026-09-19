@@ -129,6 +129,31 @@ export class WebhookService {
       trackingIndices,
     );
 
+    // Update SyncHash record in SQLite to prevent false change detection on next sync
+    try {
+      const rowId = `row_${targetRow.rowNumber}_${targetRow.data['Email'] || targetRow.data['Số điện thoại'] || targetRow.rowNumber}`;
+      const updatedRowData = { ...targetRow.data, 'Trạng thái': mappedSheetStatus };
+      const newHash = this.dataTransformer.computeRowHash(updatedRowData);
+
+      let hashRecord = await this.syncHashRepo.findOne({ where: { rowIdentifier: rowId } });
+      if (hashRecord) {
+        hashRecord.contentHash = newHash;
+        hashRecord.leadId = leadId;
+        hashRecord.status = 'SYNCED';
+        await this.syncHashRepo.save(hashRecord);
+      } else {
+        await this.syncHashRepo.save({
+          rowIdentifier: rowId,
+          leadId,
+          contentHash: newHash,
+          direction: 'crm_to_sheet',
+          status: 'SYNCED',
+        });
+      }
+    } catch (hashErr: any) {
+      this.logger.warn(`Could not update sync hash in SQLite: ${hashErr.message}`);
+    }
+
     // Record sync log
     await this.syncLogRepo.save({
       jobId: `webhook_${Date.now()}`,

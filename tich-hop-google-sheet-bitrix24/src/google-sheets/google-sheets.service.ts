@@ -157,7 +157,7 @@ export class GoogleSheetsService {
         spreadsheetId,
         range: `'${targetSheet}'!1:1`,
       });
-      headers = (refreshed.data.values?.[0] || []).map((h) => String(h).trim());
+      headers = (refreshed?.data?.values?.[0] || []).map((h) => String(h).trim());
     }
 
     const rows: SheetRow[] = [];

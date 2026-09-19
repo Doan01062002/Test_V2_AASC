@@ -12,7 +12,11 @@ describe('DataTransformerService', () => {
       expect(service.normalizePhone('0912 345 678')).toBe('0912345678');
       expect(service.normalizePhone('(091) 234-5678')).toBe('0912345678');
       expect(service.normalizePhone('+84912345678')).toBe('0912345678');
+      expect(service.normalizePhone('+84(0)912345678')).toBe('0912345678');
       expect(service.normalizePhone('84912345678')).toBe('0912345678');
+      // Google Sheets strips leading zero from phone numbers
+      expect(service.normalizePhone('912345678')).toBe('0912345678');
+      expect(service.normalizePhone(912345678)).toBe('0912345678');
       expect(service.normalizePhone('')).toBe('');
       expect(service.normalizePhone(undefined)).toBe('');
     });
@@ -35,6 +39,7 @@ describe('DataTransformerService', () => {
     it('should parse currency formatted strings into clean numbers', () => {
       expect(service.parseCurrency('50,000,000 VND')).toBe(50000000);
       expect(service.parseCurrency('120.000.000 đ')).toBe(120000000);
+      expect(service.parseCurrency('50,000,000.00')).toBe(50000000);
       expect(service.parseCurrency('35000000')).toBe(35000000);
       expect(service.parseCurrency(5000000)).toBe(5000000);
       expect(service.parseCurrency('')).toBe(0);
@@ -52,6 +57,7 @@ describe('DataTransformerService', () => {
       expect(service.mapStatusToBitrix('Chuyển giao')).toBe('CONVERTED');
       expect(service.mapStatusToBitrix('Không tiềm năng')).toBe('JUNK');
       expect(service.mapStatusToBitrix('Unknown')).toBe('NEW');
+      expect(service.mapStatusToBitrix('Custom Status', { 'custom status': 'CUSTOM_STATUS' })).toBe('CUSTOM_STATUS');
     });
 
     it('should map Bitrix24 status code back to Vietnamese text', () => {
@@ -60,6 +66,15 @@ describe('DataTransformerService', () => {
       expect(service.mapBitrixStatusToSheet('QUALIFIED')).toBe('Đạt tiêu chuẩn');
       expect(service.mapBitrixStatusToSheet('CONVERTED')).toBe('Chuyển giao');
       expect(service.mapBitrixStatusToSheet('JUNK')).toBe('Không tiềm năng');
+      expect(service.mapBitrixStatusToSheet('CUSTOM_ID', { CUSTOM_ID: 'Tùy chỉnh' })).toBe('Tùy chỉnh');
+    });
+  });
+
+  describe('splitFullName', () => {
+    it('should split full name into first and last name correctly', () => {
+      expect(service.splitFullName('Nguyễn Văn An')).toEqual({ lastName: 'Nguyễn Văn', firstName: 'An' });
+      expect(service.splitFullName('John')).toEqual({ lastName: '', firstName: 'John' });
+      expect(service.splitFullName('')).toEqual({ lastName: '', firstName: '' });
     });
   });
 
@@ -97,6 +112,30 @@ describe('DataTransformerService', () => {
       expect(result.fields['STATUS_ID']).toBe('NEW');
       expect(result.fields['ASSIGNED_BY_ID']).toBe(1);
       expect(result.fields['COMMENTS']).toBe('Quan tâm CRM Cloud');
+    });
+
+    it('should apply custom mapping rules for custom fields, phone, email, and numbers', () => {
+      const row = {
+        'Khách': 'Lê Văn C',
+        'Mail': 'c.le@example.com',
+        'SĐT': '903112233',
+        'Chi nhánh': 'Hà Nội',
+        'Điểm số': '95',
+      };
+
+      const mapping = [
+        { sheetColumn: 'Khách', bitrixField: 'TITLE', type: 'string' },
+        { sheetColumn: 'Mail', bitrixField: 'EMAIL', type: 'email' },
+        { sheetColumn: 'SĐT', bitrixField: 'PHONE', type: 'phone' },
+        { sheetColumn: 'Chi nhánh', bitrixField: 'UF_CRM_BRANCH', type: 'string' },
+        { sheetColumn: 'Điểm số', bitrixField: 'UF_CRM_SCORE', type: 'number' },
+      ];
+
+      const result = service.transformSheetRowToLead(row, mapping);
+      expect(result.fields['UF_CRM_BRANCH']).toBe('Hà Nội');
+      expect(result.fields['UF_CRM_SCORE']).toBe(95);
+      expect(result.fields['EMAIL']).toEqual([{ VALUE: 'c.le@example.com', VALUE_TYPE: 'WORK' }]);
+      expect(result.fields['PHONE']).toEqual([{ VALUE: '0903112233', VALUE_TYPE: 'WORK' }]);
     });
   });
 
