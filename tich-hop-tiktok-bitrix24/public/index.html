@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TikTok Lead Generation & Bitrix24 Integration Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen" x-data="dashboardApp()" x-init="initData()">
+
+  <!-- Top Navigation Bar -->
+  <nav class="bg-indigo-900 text-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-lg bg-pink-500 flex items-center justify-center font-bold text-white shadow">
+            TT
+          </div>
+          <span class="text-xl font-bold tracking-tight">TikTok <span class="text-pink-400">⚡</span> Bitrix24 CRM</span>
+          <span class="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full font-semibold">Realtime</span>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <a href="/api/docs" target="_blank" class="px-3 py-1.5 rounded-md bg-indigo-800 hover:bg-indigo-700 text-sm font-medium transition flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Swagger API
+          </a>
+          <button @click="exportCsv()" class="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-sm font-medium transition shadow flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Xuất Excel (CSV BOM)
+          </button>
+          <button @click="refreshAll()" class="p-2 rounded-md hover:bg-indigo-800 text-slate-300 hover:text-white transition" title="Làm mới">
+            <svg class="w-5 h-5" :class="{'animate-spin': loading}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Tab Selector -->
+    <div class="flex border-b border-slate-200 mb-6 space-x-4">
+      <button @click="currentTab = 'overview'" :class="{'border-indigo-600 text-indigo-600 font-bold': currentTab === 'overview', 'border-transparent text-slate-500 hover:text-slate-700': currentTab !== 'overview'}" class="pb-3 border-b-2 px-2 text-sm transition">
+        Tổng Quan & Phân Tích (Analytics)
+      </button>
+      <button @click="currentTab = 'leads'" :class="{'border-indigo-600 text-indigo-600 font-bold': currentTab === 'leads', 'border-transparent text-slate-500 hover:text-slate-700': currentTab !== 'leads'}" class="pb-3 border-b-2 px-2 text-sm transition">
+        Danh Sách Leads
+      </button>
+      <button @click="currentTab = 'deals'" :class="{'border-indigo-600 text-indigo-600 font-bold': currentTab === 'deals', 'border-transparent text-slate-500 hover:text-slate-700': currentTab !== 'deals'}" class="pb-3 border-b-2 px-2 text-sm transition">
+        Deal Pipeline Bitrix24
+      </button>
+      <button @click="currentTab = 'config'" :class="{'border-indigo-600 text-indigo-600 font-bold': currentTab === 'config', 'border-transparent text-slate-500 hover:text-slate-700': currentTab !== 'config'}" class="pb-3 border-b-2 px-2 text-sm transition">
+        Cấu Hình Rule Engine & Mapping
+      </button>
+    </div>
+
+    <!-- TAB 1: OVERVIEW & ANALYTICS -->
+    <div x-show="currentTab === 'overview'" x-cloak class="space-y-8">
+      <!-- KPI Metric Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Tổng Số Leads</p>
+            <h3 class="text-2xl font-extrabold text-slate-900 mt-1" x-text="metrics.total_leads">0</h3>
+            <span class="text-xs text-emerald-600 font-medium">TikTok Generation</span>
+          </div>
+          <div class="w-12 h-12 bg-pink-50 rounded-xl flex items-center justify-center text-pink-500 font-bold">
+            📥
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Deals Tạo Thành Công</p>
+            <h3 class="text-2xl font-extrabold text-indigo-600 mt-1" x-text="metrics.total_deals">0</h3>
+            <span class="text-xs text-slate-500">Tỷ lệ Lead-to-Deal: <b x-text="metrics.conversion_rate_lead_to_deal + '%'">0%</b></span>
+          </div>
+          <div class="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 font-bold">
+            💼
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Deals Won (Chốt Đơn)</p>
+            <h3 class="text-2xl font-extrabold text-emerald-600 mt-1" x-text="metrics.deals_won">0</h3>
+            <span class="text-xs text-slate-500">Tỷ lệ Deal-to-Won: <b x-text="metrics.conversion_rate_deal_to_won + '%'">0%</b></span>
+          </div>
+          <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-500 font-bold">
+            🏆
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Tỷ Lệ Chuyển Đổi Chung</p>
+            <h3 class="text-2xl font-extrabold text-amber-500 mt-1" x-text="metrics.overall_conversion_rate + '%'">0%</h3>
+            <span class="text-xs text-slate-500">TikTok Lead → Deal Won</span>
+          </div>
+          <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-500 font-bold">
+            📈
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Quality Distribution Doughnut -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h4 class="text-base font-bold text-slate-900 mb-4 flex items-center justify-between">
+            <span>Phân Bổ Chất Lượng Lead</span>
+            <span class="text-xs font-normal text-slate-500">Score 0 - 100</span>
+          </h4>
+          <div class="relative h-64">
+            <canvas id="qualityChart"></canvas>
+          </div>
+          <div class="mt-4 grid grid-cols-3 text-center text-xs">
+            <div class="p-2 bg-emerald-50 rounded text-emerald-800">
+              <div class="font-bold text-sm" x-text="metrics.quality_distribution?.Hot || 0">0</div>
+              <div>Hot (≥70)</div>
+            </div>
+            <div class="p-2 bg-amber-50 rounded text-amber-800 mx-1">
+              <div class="font-bold text-sm" x-text="metrics.quality_distribution?.Warm || 0">0</div>
+              <div>Warm (50-69)</div>
+            </div>
+            <div class="p-2 bg-slate-100 rounded text-slate-700">
+              <div class="font-bold text-sm" x-text="metrics.quality_distribution?.Cold || 0">0</div>
+              <div>Cold (&lt;50)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campaign Performance -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm lg:col-span-2">
+          <h4 class="text-base font-bold text-slate-900 mb-4 flex items-center justify-between">
+            <span>Hiệu Suất Chiến Dịch Quảng Cáo</span>
+            <span class="text-xs font-normal text-slate-500">Leads & Doanh Thu</span>
+          </h4>
+          <div class="relative h-64">
+            <canvas id="campaignChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Campaign Breakdown Table -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+          <h4 class="font-bold text-slate-900">Chi Tiết Hiệu Suất Chiến Dịch (CPL & ROI)</h4>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-slate-600 font-semibold">
+              <tr>
+                <th class="px-6 py-3 text-left">Chiến Dịch</th>
+                <th class="px-6 py-3 text-center">Tổng Leads</th>
+                <th class="px-6 py-3 text-center">Tổng Deals</th>
+                <th class="px-6 py-3 text-center">Deals Chốt</th>
+                <th class="px-6 py-3 text-right">Chi Phí Ước Tính</th>
+                <th class="px-6 py-3 text-right">Doanh Thu Deal</th>
+                <th class="px-6 py-3 text-right">CPL (Chi phí/Lead)</th>
+                <th class="px-6 py-3 text-right">ROI (%)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              <template x-for="c in campaigns" :key="c.campaign_id">
+                <tr class="hover:bg-slate-50 transition">
+                  <td class="px-6 py-4 font-medium text-slate-900" x-text="c.campaign_name"></td>
+                  <td class="px-6 py-4 text-center font-semibold" x-text="c.total_leads"></td>
+                  <td class="px-6 py-4 text-center text-indigo-600 font-semibold" x-text="c.total_deals"></td>
+                  <td class="px-6 py-4 text-center text-emerald-600 font-semibold" x-text="c.deals_won"></td>
+                  <td class="px-6 py-4 text-right" x-text="formatMoney(c.estimated_spend)"></td>
+                  <td class="px-6 py-4 text-right font-bold text-emerald-600" x-text="formatMoney(c.total_revenue)"></td>
+                  <td class="px-6 py-4 text-right text-slate-600" x-text="formatMoney(c.cost_per_lead)"></td>
+                  <td class="px-6 py-4 text-right font-bold" :class="c.roi >= 0 ? 'text-emerald-600' : 'text-rose-600'" x-text="c.roi + '%'"></td>
+                </tr>
+              </template>
+              <tr x-show="campaigns.length === 0">
+                <td colspan="8" class="text-center py-6 text-slate-500">Chưa có dữ liệu chiến dịch</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: LEADS LIST -->
+    <div x-show="currentTab === 'leads'" x-cloak class="space-y-4">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center space-x-3">
+          <input type="text" x-model="searchQuery" placeholder="Tìm theo tên, email, sđt..." class="px-3 py-2 border rounded-lg text-sm w-64 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <select x-model="sourceFilter" @change="fetchLeads()" class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <option value="">Tất cả nguồn</option>
+            <option value="tiktok">TikTok Lead</option>
+          </select>
+        </div>
+        <div class="text-sm text-slate-500">
+          Tổng cộng: <b class="text-slate-900" x-text="leadsPagination.total">0</b> leads
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-slate-600 font-semibold">
+              <tr>
+                <th class="px-6 py-3 text-left">Khách Hàng</th>
+                <th class="px-6 py-3 text-left">Liên Hệ</th>
+                <th class="px-6 py-3 text-left">Chiến Dịch</th>
+                <th class="px-6 py-3 text-center">Quality Score</th>
+                <th class="px-6 py-3 text-center">Bitrix24 CRM</th>
+                <th class="px-6 py-3 text-center">Trạng Thái</th>
+                <th class="px-6 py-3 text-right">Hành Động</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              <template x-for="lead in leads" :key="lead.id">
+                <tr class="hover:bg-slate-50 transition">
+                  <td class="px-6 py-4">
+                    <div class="font-bold text-slate-900" x-text="lead.name"></div>
+                    <div class="text-xs text-slate-400" x-text="formatDate(lead.createdAt)"></div>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="text-slate-800" x-text="lead.phone || 'Chưa có SĐT'"></div>
+                    <div class="text-xs text-slate-500" x-text="lead.email || 'Chưa có email'"></div>
+                  </td>
+                  <td class="px-6 py-4 text-xs font-medium text-slate-600" x-text="lead.rawData?.campaign?.campaign_name || lead.campaignId || 'TikTok Ads'"></td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="px-2 py-1 rounded-full text-xs font-bold"
+                          :class="{
+                            'bg-emerald-100 text-emerald-700': lead.qualityScore >= 70,
+                            'bg-amber-100 text-amber-700': lead.qualityScore >= 50 && lead.qualityScore < 70,
+                            'bg-slate-100 text-slate-600': lead.qualityScore < 50
+                          }"
+                          x-text="lead.qualityScore + ' pts'">
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center text-xs">
+                    <template x-if="lead.bitrix24Id">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                        B24 ID: <span class="ml-1 font-bold" x-text="lead.bitrix24Id"></span>
+                      </span>
+                    </template>
+                    <template x-if="!lead.bitrix24Id">
+                      <span class="text-slate-400 italic">Chưa liên kết</span>
+                    </template>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="px-2 py-0.5 rounded-full text-xs font-semibold uppercase"
+                          :class="{
+                            'bg-emerald-100 text-emerald-800': lead.status === 'converted',
+                            'bg-blue-100 text-blue-800': lead.status === 'processed',
+                            'bg-amber-100 text-amber-800': lead.status === 'pending' || lead.status === 'new'
+                          }"
+                          x-text="lead.status">
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-right">
+                    <template x-if="lead.status !== 'converted'">
+                      <button @click="openConvertModal(lead)" class="px-2.5 py-1 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded transition">
+                        Convert sang Deal
+                      </button>
+                    </template>
+                    <template x-if="lead.status === 'converted'">
+                      <span class="text-xs text-emerald-600 font-semibold">Đã có Deal</span>
+                    </template>
+                  </td>
+                </tr>
+              </template>
+              <tr x-show="leads.length === 0">
+                <td colspan="7" class="text-center py-6 text-slate-500">Chưa có dữ liệu leads</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: DEALS LIST -->
+    <div x-show="currentTab === 'deals'" x-cloak class="space-y-4">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+          <h4 class="font-bold text-slate-900">Danh Sách Deals Đồng Bộ Bitrix24</h4>
+          <span class="text-sm text-slate-500">Tổng: <b x-text="deals.length">0</b> deals</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-slate-600 font-semibold">
+              <tr>
+                <th class="px-6 py-3 text-left">Tên Deal</th>
+                <th class="px-6 py-3 text-left">Lead Gốc</th>
+                <th class="px-6 py-3 text-right">Giá Trị (VND)</th>
+                <th class="px-6 py-3 text-center">Giai Đoạn (Stage)</th>
+                <th class="px-6 py-3 text-center">Xác Suất (%)</th>
+                <th class="px-6 py-3 text-center">Bitrix24 ID</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              <template x-for="deal in deals" :key="deal.id">
+                <tr class="hover:bg-slate-50 transition">
+                  <td class="px-6 py-4 font-bold text-slate-900" x-text="deal.title"></td>
+                  <td class="px-6 py-4 text-slate-600" x-text="deal.lead?.name || 'N/A'"></td>
+                  <td class="px-6 py-4 text-right font-semibold text-emerald-600" x-text="formatMoney(deal.amount)"></td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800" x-text="deal.stage"></span>
+                  </td>
+                  <td class="px-6 py-4 text-center font-bold" x-text="deal.probability + '%'"></td>
+                  <td class="px-6 py-4 text-center font-mono text-xs text-slate-600" x-text="deal.bitrix24Id || 'Pending'"></td>
+                </tr>
+              </template>
+              <tr x-show="deals.length === 0">
+                <td colspan="6" class="text-center py-6 text-slate-500">Chưa có deals nào được tạo</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: CONFIGURATION (FIELD MAPPINGS & DEAL RULES) -->
+    <div x-show="currentTab === 'config'" x-cloak class="space-y-6">
+      <!-- Mapping Config -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h4 class="text-lg font-bold text-slate-900 mb-2">TikTok Field Mapping sang Bitrix24 Custom Fields</h4>
+        <p class="text-sm text-slate-500 mb-4">Cấu hình ánh xạ các trường từ TikTok Webhook JSON sang trường trên Bitrix24 CRM.</p>
+        <textarea x-model="configMappingText" rows="8" class="w-full font-mono text-xs p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-900 text-emerald-400"></textarea>
+        <div class="mt-3 flex justify-end">
+          <button @click="saveMappings()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition">
+            Lưu Field Mapping
+          </button>
+        </div>
+      </div>
+
+      <!-- Rule Engine Config -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h4 class="text-lg font-bold text-slate-900 mb-2">Rule Engine Tự Động Chuyển Đổi Deal</h4>
+        <p class="text-sm text-slate-500 mb-4">Tự động kích hoạt tạo Deal trên Bitrix24 khi Lead thỏa mãn các điều kiện.</p>
+        <textarea x-model="configRulesText" rows="10" class="w-full font-mono text-xs p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-900 text-amber-300"></textarea>
+        <div class="mt-3 flex justify-end">
+          <button @click="saveRules()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition">
+            Lưu Deal Rules
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Convert Lead Modal -->
+  <div x-show="showConvertModal" x-cloak class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <h3 class="text-lg font-bold text-slate-900">Convert Lead Sang Deal</h3>
+      <p class="text-sm text-slate-500">Khách hàng: <b x-text="selectedLead?.name"></b></p>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tiêu Đề Deal</label>
+        <input type="text" x-model="convertForm.title" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Giá Trị Dự Kiến (VND)</label>
+        <input type="number" x-model="convertForm.amount" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+      </div>
+      <div class="flex justify-end space-x-3 pt-4">
+        <button @click="showConvertModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition">Hủy</button>
+        <button @click="submitConvertToDeal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition">Tạo Deal</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function dashboardApp() {
+      return {
+        currentTab: 'overview',
+        loading: false,
+        metrics: {},
+        campaigns: [],
+        leads: [],
+        deals: [],
+        leadsPagination: { total: 0, page: 1 },
+        sourceFilter: '',
+        searchQuery: '',
+        configMappingText: '',
+        configRulesText: '',
+        showConvertModal: false,
+        selectedLead: null,
+        convertForm: { title: '', amount: 0 },
+        qualityChartInstance: null,
+        campaignChartInstance: null,
+
+        async initData() {
+          await this.refreshAll();
+          this.fetchMappings();
+          this.fetchRules();
+        },
+
+        async refreshAll() {
+          this.loading = true;
+          await Promise.all([
+            this.fetchAnalytics(),
+            this.fetchLeads(),
+            this.fetchDeals(),
+          ]);
+          this.loading = false;
+        },
+
+        async fetchAnalytics() {
+          try {
+            const [ratesRes, campRes] = await Promise.all([
+              fetch('/api/v1/analytics/conversion-rates').then(r => r.json()),
+              fetch('/api/v1/analytics/campaign-performance').then(r => r.json()),
+            ]);
+            this.metrics = ratesRes;
+            this.campaigns = campRes;
+            this.renderCharts();
+          } catch (e) {
+            console.error('Error fetching analytics:', e);
+          }
+        },
+
+        async fetchLeads() {
+          try {
+            let url = `/api/v1/leads?page=1&limit=20`;
+            if (this.sourceFilter) url += `&source=${this.sourceFilter}`;
+            const res = await fetch(url).then(r => r.json());
+            this.leads = res.data || [];
+            this.leadsPagination = { total: res.total || 0, page: res.page || 1 };
+          } catch (e) {
+            console.error('Error fetching leads:', e);
+          }
+        },
+
+        async fetchDeals() {
+          try {
+            const res = await fetch('/api/v1/deals?limit=20').then(r => r.json());
+            this.deals = res.data || [];
+          } catch (e) {
+            console.error('Error fetching deals:', e);
+          }
+        },
+
+        async fetchMappings() {
+          try {
+            const res = await fetch('/api/v1/config/mappings').then(r => r.json());
+            this.configMappingText = JSON.stringify(res, null, 2);
+          } catch (e) {}
+        },
+
+        async fetchRules() {
+          try {
+            const res = await fetch('/api/v1/config/rules').then(r => r.json());
+            this.configRulesText = JSON.stringify(res, null, 2);
+          } catch (e) {}
+        },
+
+        async saveMappings() {
+          try {
+            const parsed = JSON.parse(this.configMappingText);
+            await fetch('/api/v1/config/mappings', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(parsed),
+            });
+            alert('Đã lưu Field Mapping thành công!');
+          } catch (e) {
+            alert('JSON không hợp lệ: ' + e.message);
+          }
+        },
+
+        async saveRules() {
+          try {
+            const parsed = JSON.parse(this.configRulesText);
+            await fetch('/api/v1/config/rules', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(parsed),
+            });
+            alert('Đã lưu Deal Rules thành công!');
+          } catch (e) {
+            alert('JSON không hợp lệ: ' + e.message);
+          }
+        },
+
+        openConvertModal(lead) {
+          this.selectedLead = lead;
+          this.convertForm = {
+            title: `Deal - ${lead.name}`,
+            amount: 5000000,
+          };
+          this.showConvertModal = true;
+        },
+
+        async submitConvertToDeal() {
+          if (!this.selectedLead) return;
+          try {
+            const res = await fetch(`/api/v1/leads/${this.selectedLead.id}/convert-to-deal`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(this.convertForm),
+            });
+            if (res.ok) {
+              this.showConvertModal = false;
+              await this.refreshAll();
+              alert('Đã chuyển đổi Lead thành Deal thành công!');
+            }
+          } catch (e) {
+            alert('Lỗi: ' + e.message);
+          }
+        },
+
+        exportCsv() {
+          window.location.href = '/api/v1/reports/export?format=csv&date_range=30d';
+        },
+
+        renderCharts() {
+          // Quality chart
+          const qCtx = document.getElementById('qualityChart')?.getContext('2d');
+          if (qCtx) {
+            if (this.qualityChartInstance) this.qualityChartInstance.destroy();
+            this.qualityChartInstance = new Chart(qCtx, {
+              type: 'doughnut',
+              data: {
+                labels: ['Hot (≥70)', 'Warm (50-69)', 'Cold (<50)'],
+                datasets: [{
+                  data: [
+                    this.metrics.quality_distribution?.Hot || 0,
+                    this.metrics.quality_distribution?.Warm || 0,
+                    this.metrics.quality_distribution?.Cold || 0,
+                  ],
+                  backgroundColor: ['#10b981', '#f59e0b', '#94a3b8'],
+                }],
+              },
+              options: { responsive: true, maintainAspectRatio: false }
+            });
+          }
+
+          // Campaign chart
+          const cCtx = document.getElementById('campaignChart')?.getContext('2d');
+          if (cCtx) {
+            if (this.campaignChartInstance) this.campaignChartInstance.destroy();
+            const labels = this.campaigns.map(c => c.campaign_name.substring(0, 15));
+            const leadsData = this.campaigns.map(c => c.total_leads);
+            const dealsData = this.campaigns.map(c => c.total_deals);
+
+            this.campaignChartInstance = new Chart(cCtx, {
+              type: 'bar',
+              data: {
+                labels,
+                datasets: [
+                  { label: 'Leads', data: leadsData, backgroundColor: '#f43f5e' },
+                  { label: 'Deals', data: dealsData, backgroundColor: '#6366f1' },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } }
+              }
+            });
+          }
+        },
+
+        formatMoney(amount) {
+          if (!amount) return '0 ₫';
+          return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+        },
+
+        formatDate(d) {
+          if (!d) return '';
+          return new Date(d).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        }
+      }
+    }
+  </script>
+</body>
+</html>
