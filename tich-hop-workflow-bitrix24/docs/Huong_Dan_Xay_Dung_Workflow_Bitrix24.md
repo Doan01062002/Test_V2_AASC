@@ -101,37 +101,63 @@ flowchart TD
 
 ---
 
-### 2.3. Hướng dẫn cấu hình từng khối trong Business Process Designer
+### 2.3. Hướng dẫn cấu hình từng khối trong Business Process Designer (Thực tế trên Bitrix24)
 
-Khi thiết kế bằng **Sequential Business Process** (Quy trình kinh doanh tuần tự):
+Quy trình được xây dựng bằng **Quá trình kinh doanh liên tục (Sequential Business Process)** với các khối tác vụ chuẩn xác như sau:
 
-1. **Khối Khởi Tạo**:
-   - Thêm Action **Set Status Message**: Hiển thị trạng thái `"Chờ Quản lý trực tiếp phê duyệt"`.
-   - Thêm Action **Log to Tracking**: Ghi log `"Nhân viên [Người tạo] đã gửi đơn xin nghỉ phép từ ngày [START_DATE] đến [END_DATE]"`.
-2. **Khối Phê Duyệt Cấp 1 (Approve Element - Quản lý trực tiếp)**:
-   - **Users to vote**: Chọn `{=Document:CREATED_BY}` $\rightarrow$ chọn Quản lý trực tiếp (hoặc gán User Quản lý).
-   - **Approve type**: All must approve (hoặc Any).
-   - **Fields**: Hiển thị loại nghỉ, ngày bắt đầu, ngày kết thúc, lý do.
-   - Nhánh **Approved**: Tiếp tục.
-   - Nhánh **Rejected**:
-     + Action **Set Field**: Cập nhật trạng thái `"Bị từ chối bởi Quản lý trực tiếp"`.
-     + Action **Send Notification**: Gửi tin nhắn cho người tạo: `"Đơn nghỉ phép của bạn đã bị Quản lý trực tiếp từ chối. Lý do: [Comment]"`.
-     + Action **Terminate Process**.
-3. **Khối Kiểm Tra Điều Kiện (Condition Block)**:
-   - Chọn loại: **Field Value / Variable**.
-   - Điều kiện: `{=Document:PROPERTY_DURATION_DAYS}` $\le$ `{=Document:PROPERTY_LEAVE_BALANCE}`.
-   - Nếu sai: Rẽ sang nhánh xử lý vượt phép $\rightarrow$ Thông báo từ chối do không đủ ngày phép.
-4. **Khối Phê Duyệt Cấp 2 (Approve Element - Trưởng phòng Nhân sự)**:
-   - **Users to vote**: Chọn Trưởng phòng Nhân sự (hoặc User HR).
-   - Nhánh **Rejected**: Thông báo từ chối + Ghi log.
-   - Nhánh **Approved**: Tiếp tục sang Cấp 3.
-5. **Khối Phê Duyệt Cấp 3 (Approve Element - Giám đốc)**:
-   - **Users to vote**: Chọn Giám đốc điều hành (Director).
-   - Nhánh **Rejected**: Thông báo từ chối + Ghi log.
-   - Nhánh **Approved**:
-     + Action **Set Status Message**: `"Đã phê duyệt thành công"`.
-     + Action **Send Notification**: Gửi tin nhắn thông báo cho Nhân viên và Trưởng phòng Nhân sự: `"Đơn xin nghỉ phép của bạn đã được Giám đốc phê duyệt thành công!"`.
-     + Action **Log to Tracking**: Ghi nhận hoàn tất audit trail.
+1. **Thông số biểu mẫu (Template Parameters)**:
+   - **Tên biểu mẫu**: `Quy trình Nghỉ phép (3 cấp phê duyệt)`
+   - **Tự động chạy**: `[x] Khi được thêm` (Khi nhân viên tạo đơn, quy trình tự động kích hoạt).
+   - **Bật nhật ký sự kiện trong 7 ngày**: `[x]` (Ghi vết kiểm toán / Audit Trail toàn diện).
+
+2. **Khối Phê Duyệt Cấp 1 (`Phê duyệt tài liệu` - Quản lý trực tiếp)**:
+   - **Vị trí**: Nằm trong nhóm **Tác vụ** $\rightarrow$ Kéo thả vào giữa `Bắt đầu` và `Kết thúc`.
+   - **Custom name**: `Cấp 1: Quản lý trực tiếp phê duyệt`
+   - **Thông qua cử tri (Approver)**: `{=Document:CREATED_BY}` $\rightarrow$ Quản lý trực tiếp (hoặc tài khoản quản trị `vandoan01062002@gmail.com [1]`).
+   - **Phê duyệt kiểu**: `Bất kỳ người nào`
+   - **Tên phân công**: `[Cấp 1] Phê duyệt đơn xin nghỉ phép`
+   - **Mô tả phân công**: `Vui lòng xem xét và phê duyệt đơn xin nghỉ phép của nhân viên.`
+   - **Nút cho phép / từ chối**: `Đồng ý duyệt` / `Từ chối`
+   - **Yêu cầu ghi chú**: `Có` (hoặc `Chỉ khi từ chối` - bắt buộc cấp duyệt điền lý do khi từ chối theo đề bài).
+
+3. **Khối Kiểm Tra Điều Kiện (`Điều kiện` - Condition Block)**:
+   - **Vị trí**: Nằm trong nhóm **Điều khiển luồng** $\rightarrow$ Chèn vào dưới nhánh `Có` của Cấp 1.
+   - **Nhánh trái - Hợp lệ**:
+     - **Custom name**: `Hợp lệ (Số ngày nghỉ <= Số phép còn lại)`
+     - **Loại điều kiện**: `Trường tài liệu`
+     - **Trường tài liệu**: `Số ngày xin nghỉ`
+     - **Điều kiện**: `không nhiều hơn` ($\le$)
+     - **Giá trị**: `{{Số ngày phép còn lại}}`
+   - **Nhánh phải - Vượt phép**:
+     - **Custom name**: `Vượt quá số ngày phép`
+     - Xử lý: Rẽ sang luồng từ chối do không đủ phép.
+
+4. **Khối Phê Duyệt Cấp 2 (`Phê duyệt tài liệu` - Trưởng phòng Nhân sự)**:
+   - **Vị trí**: Chèn dưới nhánh `Hợp lệ` của khối Điều kiện.
+   - **Custom name**: `Cấp 2: Trưởng phòng Nhân sự phê duyệt`
+   - **Thông qua cử tri**: Trưởng phòng Nhân sự (gán `vandoan01062002@gmail.com [1]`).
+   - **Phê duyệt kiểu**: `Bất kỳ người nào`
+   - **Tên phân công**: `[Cấp 2] Trưởng phòng Nhân sự xem xét đơn nghỉ phép`
+   - **Yêu cầu ghi chú**: `Có` (bắt buộc nêu lý do nếu từ chối).
+
+5. **Khối Phê Duyệt Cấp 3 (`Phê duyệt tài liệu` - Giám đốc)**:
+   - **Vị trí**: Chèn dưới nhánh `Có` của Cấp 2.
+   - **Custom name**: `Cấp 3: Giám đốc phê duyệt`
+   - **Thông qua cử tri**: Ban Giám đốc (gán `vandoan01062002@gmail.com [1]`).
+   - **Phê duyệt kiểu**: `Bất kỳ người nào`
+   - **Tên phân công**: `[Cấp 3] Giám đốc xem xét phê duyệt đơn nghỉ phép`
+   - **Yêu cầu ghi chú**: `Có`.
+
+6. **Khối Thông Báo Duyệt Thành Công (`Thông báo cho người dùng` - SocNetMessage)**:
+   - **Vị trí**: Chèn dưới nhánh `Có` của Cấp 3.
+   - **Custom name**: `Thông báo: Đơn nghỉ phép được duyệt thành công`
+   - **Người gửi**: `vandoan01062002@gmail.com [1]`
+   - **Người nhận**: `Tác giả;` (Người tạo đơn)
+   - **Văn bản thông báo**: `Chúc mừng! Đơn xin nghỉ phép của bạn đã được phê duyệt thành công qua 3 cấp và được Ban Giám đốc thông qua.`
+
+7. **Kết Quả Xuất File**:
+   - File template: `exports/NghiPhep_3Cap.bpt` (Kích thước: 3,156 bytes, zlib binary Bitrix24 template).
+   - Đã kiểm tra cấu trúc bên trong: Chứa đầy đủ các Activity (`SequentialWorkflowActivity`, `ApproveActivity` Cấp 1/2/3, `IfElseActivity` Điều kiện so sánh ngày phép, `SocNetMessageActivity` Thông báo).
 
 ---
 
