@@ -12,12 +12,27 @@
 - **Thư mục dự án**: [`tich-hop-google-sheet-bitrix24/`](./tich-hop-google-sheet-bitrix24/)
 - **Tài liệu thiết kế**: [`docs/superpowers/specs/2026-09-19-google-sheets-bitrix24-sync-design.md`](./docs/superpowers/specs/2026-09-19-google-sheets-bitrix24-sync-design.md)
 - **Kế hoạch triển khai**: [`docs/superpowers/plans/2026-09-19-google-sheets-bitrix24-sync.md`](./docs/superpowers/plans/2026-09-19-google-sheets-bitrix24-sync.md)
-- **Video Demo**: [`docs/demo/Demo_01.mp4`](./docs/demo/Demo_01.mp4) (Xem trên YouTube: [https://youtu.be/QYbhUP7QNC4](https://youtu.be/QYbhUP7QNC4))
+- **Đặc điểm nổi bật**:
+  - Đồng bộ 2 chiều (Bi-directional sync): Sheet ➔ Bitrix24 và Webhook Bitrix24 ➔ Sheet.
+  - Tự động phát hiện và sinh 4 cột Tracking trên Sheet: `Trạng thái đồng bộ`, `Lead ID Bitrix24`, `Thời gian đồng bộ cuối`, `Thông báo lỗi`.
+  - Cơ chế Idempotency qua SHA-256 Hash lưu trữ trên SQLite cục bộ, chống trùng lặp (Deduplication) và chống vòng lặp vô tận (Infinite Loop Prevention).
+  - Web Admin Dashboard trực quan (`/admin`) với nút kích hoạt đồng bộ ngay, biểu đồ thống kê và chỉnh sửa field mapping.
+  - Hỗ trợ CLI Command Runner độc lập (`npm run sync:cli`).
+
+#### 🎥 Video Demo Bài 1 (Nhấp vào ảnh để xem trên YouTube):
+
+[![Video Demo Tích hợp Google Sheets với Bitrix24 CRM](https://img.youtube.com/vi/QYbhUP7QNC4/maxresdefault.jpg)](https://youtu.be/QYbhUP7QNC4)
+
+> 👆 *Nhấp vào hình ảnh trên để chuyển sang xem video trên YouTube (Full HD 1080p)*  
+> Hoặc xem trực tiếp file video trên trình phát GitHub: [Demo_01.mp4 trên GitHub](https://github.com/Doan01062002/Test_V2_AASC/blob/main/docs/demo/Demo_01.mp4)
+
+---
 
 ### 2. Bài 2: Tích Hợp TikTok Lead Generation Với Bitrix24 CRM
 - **Thư mục dự án**: [`tich-hop-tiktok-bitrix24/`](./tich-hop-tiktok-bitrix24/)
 - **Tài liệu thiết kế**: [`docs/superpowers/specs/2026-09-19-tiktok-bitrix24-integration-design.md`](./docs/superpowers/specs/2026-09-19-tiktok-bitrix24-integration-design.md)
 - **Kế hoạch triển khai**: [`docs/superpowers/plans/2026-09-19-tiktok-bitrix24-integration.md`](./docs/superpowers/plans/2026-09-19-tiktok-bitrix24-integration.md)
+- **Tài liệu README chi tiết từ A-Z**: [`tich-hop-tiktok-bitrix24/README.md`](./tich-hop-tiktok-bitrix24/README.md)
 - **Đặc điểm nổi bật**:
   - Webhook xác thực chữ ký bảo mật HMAC-SHA256 phản hồi tức thì <50ms.
   - Hàng đợi xử lý bất đồng bộ BullMQ & Redis (Rate Limiter 2/s, Exponential Backoff Retry 3x, Dead Letter Queue - DLQ & Quản trị DLQ).
@@ -29,25 +44,51 @@
 
 ---
 
+## 🚀 Hướng Dẫn Nhanh Bài 1: Google Sheets - Bitrix24
+
+```bash
+cd tich-hop-google-sheet-bitrix24
+
+# 1. Cài đặt thư viện dependencies
+npm install
+
+# 2. Chạy kiểm thử tự động (Unit Tests Coverage >= 80%)
+npm run test:cov
+
+# 3. Khởi động Web Admin Server
+npm run start:dev
+# -> Mở trình duyệt Web Admin: http://localhost:3000/admin
+# -> Mở tài liệu Swagger:       http://localhost:3000/api/docs
+
+# 4. Hoặc chạy đồng bộ trực tiếp qua CLI Runner (không cần bật web)
+npm run sync:cli
+```
+
+---
+
 ## 🚀 Hướng Dẫn Nhanh Bài 2: TikTok - Bitrix24
 
 ```bash
 cd tich-hop-tiktok-bitrix24
 
-# 1. Cài đặt dependencies
+# 1. Cài đặt thư viện dependencies
 npm install
 
-# 2. Nạp dữ liệu cấu hình ban đầu
+# 2. Nạp dữ liệu cấu hình ban đầu (Field Mappings & Rule Engine)
 npm run seed
 
-# 3. Chạy kiểm thử tự động (Coverage >= 80%)
+# 3. Chạy kiểm thử tự động (Unit Tests Coverage đạt 93.35%)
 npm run test:cov
 
 # 4. Khởi động ứng dụng
 npm run start:dev
-# -> Web Dashboard: http://localhost:3000/dashboard
-# -> Swagger Docs:   http://localhost:3000/api/docs
+# -> Mở Web Dashboard:  http://localhost:3000/dashboard
+# -> Mở Swagger Docs:   http://localhost:3000/api/docs
+# -> Kiểm tra Health:   http://localhost:3000/health
 
 # 5. Gửi thử nghiệm Mock TikTok Webhook có chữ ký HMAC-SHA256
 npm run mock:webhook
+
+# 6. Chạy thử nghiệm Batch Migration (nạp dữ liệu lịch sử hàng loạt)
+npm run migrate:historical
 ```
