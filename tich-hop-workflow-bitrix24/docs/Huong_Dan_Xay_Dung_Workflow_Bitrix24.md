@@ -216,28 +216,75 @@ flowchart TD
 
 ---
 
-### 3.3. Hướng dẫn cấu hình từng khối trong Business Process Designer
+### 3.3. Hướng dẫn cấu hình từng khối trong Business Process Designer (Thực tế trên Bitrix24)
 
-1. **Khối Phê Duyệt Cấp 1 (Quản lý trực tiếp)**:
-   - Action: `Approve Element`.
-   - Mục đích: Đánh giá tính cần thiết của chuyến công tác đối với kế hoạch kinh doanh/triển khai.
-   - Người duyệt: Trưởng bộ phận trực tiếp của nhân viên đề xuất.
-2. **Khối Kiểm Tra Điều Kiện Ngân Sách (Condition Block)**:
-   - Điều kiện: `{=Document:PROPERTY_TOTAL_AMOUNT}` $\le$ `{=Document:PROPERTY_BUDGET_AVAILABLE}`.
-   - Nhánh sai: Từ chối ngay lập tức do chi phí vượt quá ngân sách khả dụng đã phân bổ.
-3. **Khối Phê Duyệt Cấp 2 (Trưởng phòng Tài chính)**:
-   - Action: `Approve Element`.
-   - Mục đích: Kiểm tra các chứng từ, báo giá đính kèm và kiểm tra hạn mức hạch toán chi phí công tác.
-4. **Khối Phê Duyệt Cấp 3 (Phó Giám đốc Tài chính)**:
-   - Action: `Approve Element`.
-   - Mục đích: Đánh giá tính hợp lý, tỷ suất hiệu quả chi phí so với mục tiêu chuyến công tác.
-5. **Khối Phê Duyệt Cấp 4 (Giám đốc điều hành - Phê duyệt cuối cùng)**:
-   - Action: `Approve Element`.
-   - Mục đích: Phê duyệt quyết định cử cán bộ đi công tác và lệnh chi tạm ứng.
-   - Khi hoàn tất:
-     - Gửi tin nhắn thông báo đến Người đề xuất: `"Đề xuất chi phí công tác tại [LOCATION] với số tiền [TOTAL_AMOUNT] VND đã được Giám đốc phê duyệt thành công!"`.
-     - Gửi thông báo đến Bộ phận Kế toán: Tiếp nhận hồ sơ để thực hiện tạm ứng công tác phí.
-     - Cập nhật trạng thái: `Đã phê duyệt`.
+Quy trình được xây dựng bằng **Quá trình kinh doanh liên tục (Sequential Business Process)** với đầy đủ 4 cấp phê duyệt, điều kiện ngân sách, và các khối thông báo duyệt/từ chối tự động:
+
+1. **Thông số biểu mẫu (Template Parameters)**:
+   - **Tên biểu mẫu**: `Quy trình Chi phí công tác (4 cấp phê duyệt)`
+   - **Tự động chạy**: `[x] Khi được thêm`
+   - **Bật nhật ký sự kiện trong 7 ngày**: `[x]` (Lưu vết kiểm toán / Audit Trail toàn diện).
+
+2. **Khối Phê Duyệt Cấp 1 (`Phê duyệt tài liệu` - Quản lý trực tiếp)**:
+   - **Vị trí**: Nằm giữa `Bắt đầu` và `Kết thúc`.
+   - **Custom name**: `Cấp 1: Quản lý trực tiếp phê duyệt`
+   - **Thông qua cử tri (Approver)**: `{=Document:CREATED_BY}` $\rightarrow$ Quản lý trực tiếp (gán `vandoan01062002@gmail.com [1]`).
+   - **Phê duyệt kiểu**: `Bất kỳ người nào`
+   - **Tên phân công**: `[Cấp 1] Xem xét đề xuất chi phí đi công tác`
+   - **Mô tả phân công**: `Vui lòng xem xét tính cần thiết của chuyến đi công tác và dự toán chi phí.`
+   - **Yêu cầu ghi chú**: `Khi từ chối` (Bắt buộc người duyệt nhập lý do khi từ chối).
+
+3. **Khối Kiểm Tra Điều Kiện Ngân Sách (`Điều kiện` - Condition Block)**:
+   - **Vị trí**: Chèn dưới nhánh `Có` của Cấp 1.
+   - **Nhánh trái - Hợp lệ**:
+     - **Custom name**: `Hợp lệ (Tổng chi phí <= Ngân sách khả dụng)`
+     - **Loại điều kiện**: `Trường tài liệu`
+     - **Trường tài liệu**: `Tổng chi phí dự kiến` (hoặc `Chi phí dự trù`)
+     - **Điều kiện**: `không nhiều hơn` ($\le$)
+     - **Giá trị**: `{{Ngân sách khả dụng}}`
+   - **Nhánh phải - Vượt ngân sách**:
+     - **Custom name**: `Vượt ngân sách khả dụng`
+     - **Khối tác vụ đính kèm**: `Thông báo: Từ chối do vượt ngân sách` (`SocNetMessageActivity`)
+       - Người nhận: `Tác giả;`
+       - Văn bản thông báo: `Rất tiếc! Đề xuất chi phí công tác của bạn bị từ chối do tổng chi phí vượt quá ngân sách khả dụng của phòng ban.`
+
+4. **Khối Phê Duyệt Cấp 2 (`Phê duyệt tài liệu` - Trưởng phòng Tài chính)**:
+   - **Vị trí**: Chèn dưới nhánh `Hợp lệ` của khối Điều kiện.
+   - **Custom name**: `Cấp 2: Trưởng phòng Tài chính phê duyệt`
+   - **Thông qua cử tri**: Trưởng phòng Tài chính (gán `vandoan01062002@gmail.com [1]`).
+   - **Tên phân công**: `[Cấp 2] Trưởng phòng Tài chính thẩm định chi phí và chứng từ`
+   - **Mô tả phân công**: `Kiểm tra định mức chi tiêu, hóa đơn, vé máy bay và tính hợp lệ của chi phí công tác.`
+   - **Yêu cầu ghi chú**: `Khi từ chối`.
+   - **Nhánh từ chối (`Không`)**: Thêm khối `Thông báo: Đề xuất chi phí bị từ chối` gửi đến `Tác giả;`.
+
+5. **Khối Phê Duyệt Cấp 3 (`Phê duyệt tài liệu` - Phó Giám đốc Tài chính)**:
+   - **Vị trí**: Chèn dưới nhánh `Có` của Cấp 2.
+   - **Custom name**: `Cấp 3: Phó Giám đốc Tài chính phê duyệt`
+   - **Thông qua cử tri**: Phó Giám đốc Tài chính (gán `vandoan01062002@gmail.com [1]`).
+   - **Tên phân công**: `[Cấp 3] Phó Giám đốc Tài chính phê duyệt nguồn chi phí`
+   - **Mô tả phân công**: `Xem xét tính hợp lý của chi phí và nguồn tiền ngân sách phân bổ cho chuyến công tác.`
+   - **Yêu cầu ghi chú**: `Khi từ chối`.
+   - **Nhánh từ chối (`Không`)**: Thêm khối `Thông báo: Đề xuất chi phí bị từ chối` gửi đến `Tác giả;`.
+
+6. **Khối Phê Duyệt Cấp 4 (`Phê duyệt tài liệu` - Giám đốc)**:
+   - **Vị trí**: Chèn dưới nhánh `Có` của Cấp 3.
+   - **Custom name**: `Cấp 4: Giám đốc phê duyệt`
+   - **Thông qua cử tri**: Ban Giám đốc điều hành (gán `vandoan01062002@gmail.com [1]`).
+   - **Tên phân công**: `[Cấp 4] Giám đốc phê duyệt quyết định chi phí công tác`
+   - **Mô tả phân công**: `Phê duyệt cấp cao nhất cho đề xuất chi phí đi công tác.`
+   - **Yêu cầu ghi chú**: `Khi từ chối`.
+   - **Nhánh từ chối (`Không`)**: Thêm khối `Thông báo: Đề xuất chi phí bị từ chối` gửi đến `Tác giả;`.
+
+7. **Khối Thông Báo Duyệt Thành Công (`Thông báo cho người dùng` - SocNetMessage)**:
+   - **Vị trí**: Chèn dưới nhánh `Có` của Cấp 4.
+   - **Custom name**: `Thông báo: Chi phí công tác được duyệt thành công`
+   - **Người gửi**: `vandoan01062002@gmail.com [1]`
+   - **Người nhận**: `Tác giả;`
+   - **Văn bản thông báo**: `Chúc mừng! Đề xuất chi phí công tác của bạn đã được phê duyệt thành công qua 4 cấp và được Ban Giám đốc thông qua.`
+
+8. **Kết Quả Xuất File**:
+   - File template: `exports/ChiPhiCongTac_4Cap.bpt` (Kích thước: 3,841 bytes, zlib binary Bitrix24 template, giải nén: 22,591 bytes).
+   - Đã kiểm tra cấu trúc bên trong: Chứa đầy đủ 4 khối `ApproveActivity` (Cấp 1 $\rightarrow$ Cấp 2 $\rightarrow$ Cấp 3 $\rightarrow$ Cấp 4), khối `IfElseActivity` (Kiểm tra ngân sách), 4 khối `SocNetMessageActivity` thông báo từ chối tương ứng từng trường hợp, và 1 khối `SocNetMessageActivity` thông báo duyệt thành công.
 
 ---
 

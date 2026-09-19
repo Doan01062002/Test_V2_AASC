@@ -7,7 +7,9 @@ Thư mục này dùng để lưu trữ 2 file xuất (Export) từ Business Proc
    - **Kích thước**: 3,156 bytes
    - **Cấu trúc kỹ thuật**: Nén zlib chuẩn Bitrix24 chứa 3 cấp duyệt (`ApproveActivity`: Quản lý trực tiếp $\rightarrow$ Trưởng phòng Nhân sự $\rightarrow$ Giám đốc), khối rẽ nhánh điều kiện `IfElseActivity` (`Số ngày xin nghỉ <= Số ngày phép còn lại`), và khối `SocNetMessageActivity` gửi thông báo thành công đến người tạo.
 2. **`ChiPhiCongTac_4Cap.bpt`**: File mẫu quy trình Phê duyệt Chi phí đi công tác 4 cấp.
-   - **Trạng thái**: ⏳ Đang tiến hành thực hiện tiếp theo.
+   - **Trạng thái**: ✅ **ĐÃ HOÀN THÀNH & XUẤT THÀNH CÔNG TỪ BITRIX24**
+   - **Kích thước**: 3,841 bytes (Giải nén: 22,591 bytes)
+   - **Cấu trúc kỹ thuật**: Nén zlib chuẩn Bitrix24 chứa đầy đủ 4 cấp phê duyệt (`ApproveActivity`: Quản lý trực tiếp $\rightarrow$ Trưởng phòng Tài chính $\rightarrow$ Phó Giám đốc Tài chính $\rightarrow$ Giám đốc), khối rẽ nhánh điều kiện `IfElseActivity` (`Tổng chi phí dự kiến <= Ngân sách khả dụng`), các khối `SocNetMessageActivity` gửi thông báo từ chối tương ứng tại từng cấp duyệt và khi vượt hạn mức ngân sách, cùng khối `SocNetMessageActivity` gửi thông báo chúc mừng phê duyệt hoàn tất.
 
 ---
 
