@@ -159,6 +159,33 @@ export class Bitrix24Service {
     }
   }
 
+  buildBatchCommand(method: string, params: Record<string, any>): string {
+    const serializeParam = (obj: any, prefix = ''): string[] => {
+      const pairs: string[] = [];
+      for (const [key, val] of Object.entries(obj)) {
+        if (val === undefined || val === null) continue;
+        const fullKey = prefix ? `${prefix}[${key}]` : key;
+        if (typeof val === 'object' && !Array.isArray(val)) {
+          pairs.push(...serializeParam(val, fullKey));
+        } else if (Array.isArray(val)) {
+          val.forEach((item, idx) => {
+            if (typeof item === 'object') {
+              pairs.push(...serializeParam(item, `${fullKey}[${idx}]`));
+            } else {
+              pairs.push(`${encodeURIComponent(`${fullKey}[${idx}]`)}=${encodeURIComponent(item)}`);
+            }
+          });
+        } else {
+          pairs.push(`${encodeURIComponent(fullKey)}=${encodeURIComponent(String(val))}`);
+        }
+      }
+      return pairs;
+    };
+
+    const query = serializeParam(params).join('&');
+    return query ? `${method}?${query}` : method;
+  }
+
   async batchExecute(commands: Record<string, string>): Promise<Record<string, any>> {
     if (Object.keys(commands).length === 0) return {};
     const res = await this.callMethod<{ result: Record<string, any>; result_error: Record<string, any> }>('batch', {

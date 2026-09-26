@@ -19,6 +19,9 @@ import { Bitrix24Service } from '../bitrix24/bitrix24.service';
 import { TikTokService } from '../tiktok/tiktok.service';
 import { TIKTOK_LEADS_QUEUE, PROCESS_TIKTOK_LEAD } from '../queue/queue.constants';
 
+import { GetLeadsQueryDto } from './dto/get-leads.dto';
+import { ConvertLeadToDealDto } from './dto/convert-deal.dto';
+
 @ApiTags('Management')
 @Controller('api/v1/leads')
 export class LeadsController {
@@ -37,21 +40,35 @@ export class LeadsController {
 
   @Get()
   @ApiOperation({ summary: 'Get paginated list of leads' })
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  @ApiQuery({ name: 'source', required: false, type: String, example: 'tiktok' })
-  @ApiQuery({ name: 'status', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Return paginated leads' })
   async getLeads(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-    @Query('source') source?: string,
-    @Query('status') status?: string,
+    @Query() query?: GetLeadsQueryDto | number,
+    legacyLimit?: number,
+    legacySource?: string,
+    legacyStatus?: string,
   ) {
-    const pageNum = Math.max(1, Number(page) || 1);
-    const limitNum = Math.min(100, Math.max(1, Number(limit) || 10));
+    let page = 1;
+    let limit = 10;
+    let source: string | undefined;
+    let status: string | undefined;
 
-    const qb = this.leadRepository.createQueryBuilder('lead')
+    if (typeof query === 'number' || typeof (query as any) === 'string') {
+      page = Number(query) || 1;
+      limit = Number(legacyLimit) || 10;
+      source = legacySource;
+      status = legacyStatus;
+    } else if (query) {
+      page = Number(query.page) || 1;
+      limit = Number(query.limit) || 10;
+      source = query.source;
+      status = query.status;
+    }
+
+    const pageNum = Math.max(1, page);
+    const limitNum = Math.min(100, Math.max(1, limit));
+
+    const qb = this.leadRepository
+      .createQueryBuilder('lead')
       .leftJoinAndSelect('lead.deals', 'deals');
 
     if (source) {
@@ -82,14 +99,7 @@ export class LeadsController {
   @ApiResponse({ status: 404, description: 'Lead not found' })
   async convertToDeal(
     @Param('id') id: string,
-    @Body()
-    body?: {
-      pipeline_id?: string;
-      stage_id?: string;
-      title?: string;
-      amount?: number;
-      assigned_to?: string;
-    },
+    @Body() body?: ConvertLeadToDealDto,
   ) {
     const lead = await this.leadRepository.findOne({
       where: { id },

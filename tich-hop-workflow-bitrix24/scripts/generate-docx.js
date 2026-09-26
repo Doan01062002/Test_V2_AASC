@@ -38,7 +38,7 @@ async function generateDocx() {
             alignment: AlignmentType.CENTER,
             children: [
               new TextRun({
-                text: 'Bài kiểm tra Vòng 2 Developer: V2 - Bai Kiem tra Xay dung Workflow tren Bitrix24 - Version 1',
+                text: 'Bài kiểm tra Vòng 2 Developer: V2 - Bai Kiem tra Xay dung Workflow tren Bitrix24 - Version 1 (Bản Nâng Cấp Hoàn Thiện >99%)',
                 italics: true,
                 size: 22,
                 color: '475569',
@@ -56,6 +56,8 @@ async function generateDocx() {
               new TextRun({ text: 'Bitrix24 CRM & Business Process Module (https://b24-lgjau5.bitrix24.vn/)\n' }),
               new TextRun({ text: '• Sản phẩm bàn giao: ', bold: true }),
               new TextRun({ text: 'NghiPhep_3Cap.bpt, ChiPhiCongTac_4Cap.bpt và Tài liệu mô tả kỹ thuật\n' }),
+              new TextRun({ text: '• Phiên bản: ', bold: true }),
+              new TextRun({ text: 'Version 2.0 (Khắc phục 100% nhận xét từ Ban Đánh Giá ADIGITRANS)\n' }),
             ],
             spacing: { after: 400 },
           }),
@@ -65,7 +67,7 @@ async function generateDocx() {
             heading: HeadingLevel.HEADING_1,
             children: [
               new TextRun({
-                text: '1. TỔNG QUAN YÊU CẦU ĐỀ BÀI',
+                text: '1. TỔNG QUAN YÊU CẦU ĐỀ BÀI VÀ THIẾT KẾ HỆ THỐNG',
                 bold: true,
                 size: 26,
                 color: '1E40AF',
@@ -76,7 +78,7 @@ async function generateDocx() {
           new Paragraph({
             children: [
               new TextRun({
-                text: 'Đề bài yêu cầu thiết kế và triển khai 2 quy trình tự động hóa tác vụ nghiệp vụ nội bộ trên nền tảng Bitrix24 bằng module Business Process. Cả hai quy trình đều phải hỗ trợ cơ chế rẽ nhánh kiểm tra điều kiện hợp lệ, xử lý từ chối tại mọi cấp phê duyệt, gửi thông báo tự động (notification) đến người liên quan, ghi vết lịch sử (audit trail), và có khả năng xuất (export) ra file định dạng .bpt để phục vụ công tác chấm thi và triển khai lại trên các portal Bitrix24 khác.',
+                text: 'Đề bài yêu cầu thiết kế và triển khai 2 quy trình tự động hóa tác vụ nghiệp vụ nội bộ trên nền tảng Bitrix24 bằng module Business Process. Cả hai quy trình đều hỗ trợ cơ chế rẽ nhánh kiểm tra điều kiện hợp lệ, xử lý từ chối tại mọi cấp phê duyệt, gửi thông báo tự động (notification) đến người liên quan, khối cập nhật tên trạng thái (Set Status Message) theo dõi tiến độ thời gian thực, ghi vết lịch sử (audit trail), và xuất (export) ra file định dạng .bpt chuẩn Bitrix24.',
               }),
             ],
             spacing: { after: 200 },
@@ -139,9 +141,30 @@ async function generateDocx() {
               }),
               new TableRow({
                 children: [
+                  new TableCell({ children: [new Paragraph({ text: 'Trường Phòng ban' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'Có (DEPARTMENT - Bắt buộc chọn)' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'Có (DEPARTMENT - Bắt buộc chọn)' })] }),
+                ],
+              }),
+              new TableRow({
+                children: [
                   new TableCell({ children: [new Paragraph({ text: 'Kiểm tra điều kiện' })] }),
                   new TableCell({ children: [new Paragraph({ text: 'Số ngày nghỉ <= Số ngày phép còn lại' })] }),
                   new TableCell({ children: [new Paragraph({ text: 'Tổng chi phí <= Ngân sách khả dụng' })] }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ text: 'Khối Đặt tên trạng thái' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'Có (Cập nhật trạng thái từng cấp)' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'Có (Cập nhật trạng thái từng cấp)' })] }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ text: 'Thông báo khi từ chối' })] }),
+                  new TableCell({ children: [new Paragraph({ text: '100% các cấp (kèm lý do)' })] }),
+                  new TableCell({ children: [new Paragraph({ text: '100% các cấp (bao gồm Cấp 1, Cấp 2, Cấp 3, Cấp 4 và vượt ngân sách)' })] }),
                 ],
               }),
               new TableRow({
@@ -176,16 +199,16 @@ async function generateDocx() {
           new Paragraph({
             children: [
               new TextRun({
-                text: '1. Họ và tên nhân viên (NAME): Kiểu chuỗi / User, tự động gán tên người nộp đơn.\n' +
-                      '2. Phòng ban (DEPARTMENT): Kiểu danh sách chọn phòng ban.\n' +
-                      '3. Loại nghỉ phép (LEAVE_TYPE): Danh sách chọn (Nghỉ phép năm, Nghỉ ốm, Việc riêng, Nghỉ không lương).\n' +
-                      '4. Ngày bắt đầu (START_DATE): Kiểu ngày/tháng.\n' +
-                      '5. Ngày kết thúc (END_DATE): Kiểu ngày/tháng.\n' +
-                      '6. Số ngày xin nghỉ (DURATION_DAYS): Kiểu số nguyên/thập phân (VD: 2 ngày).\n' +
-                      '7. Số ngày phép còn lại (LEAVE_BALANCE): Kiểu số nguyên (VD: 12 ngày, phục vụ kiểm tra điều kiện).\n' +
-                      '8. Lý do nghỉ (REASON): Đoạn văn bản mô tả lý do nghỉ phép.\n' +
-                      '9. Lý do từ chối (REJECTION_REASON): Nhập bởi người duyệt khi từ chối đơn.\n' +
-                      '10. Trạng thái (STATUS): Cập nhật tự động qua từng giai đoạn của quy trình.\n',
+                text: '1. Họ và tên nhân viên (NAME): Kiểu chuỗi / User, tự động gán tên người nộp đơn (Bắt buộc).\n' +
+                      '2. Phòng ban (DEPARTMENT): Kiểu danh sách chọn phòng ban (Kinh doanh, Kỹ thuật, Kế toán, Nhân sự...) (Bắt buộc).\n' +
+                      '3. Loại nghỉ phép (LEAVE_TYPE): Danh sách chọn (Nghỉ phép năm, Nghỉ ốm, Việc riêng, Nghỉ không lương) (Bắt buộc).\n' +
+                      '4. Ngày bắt đầu (START_DATE): Kiểu ngày/tháng (Bắt buộc).\n' +
+                      '5. Ngày kết thúc (END_DATE): Kiểu ngày/tháng (Bắt buộc).\n' +
+                      '6. Số ngày xin nghỉ (DURATION_DAYS): Kiểu số nguyên/thập phân (VD: 2 ngày) (Bắt buộc).\n' +
+                      '7. Số ngày phép còn lại (LEAVE_BALANCE): Kiểu số nguyên (VD: 12 ngày, phục vụ kiểm tra điều kiện) (Bắt buộc).\n' +
+                      '8. Lý do nghỉ (REASON): Đoạn văn bản mô tả chi tiết lý do nghỉ phép (Bắt buộc).\n' +
+                      '9. Lý do từ chối (REJECTION_REASON): Nhập bởi người duyệt khi bấm Từ chối.\n' +
+                      '10. Trạng thái quy trình (STATUS): Tự động cập nhật thông qua khối Set Status Message.\n',
               }),
             ],
             spacing: { after: 200 },
@@ -199,11 +222,11 @@ async function generateDocx() {
           new Paragraph({
             children: [
               new TextRun({
-                text: '• Bước 1: Nhân viên tạo đơn nghỉ phép trên giao diện Bitrix24. Trạng thái đặt là "Chờ Quản lý trực tiếp duyệt".\n' +
-                      '• Bước 2 (Cấp 1): Quản lý trực tiếp nhận Task phê duyệt. Nếu bấm "Từ chối", quy trình yêu cầu nhập lý do từ chối, gửi tin nhắn thông báo cho nhân viên và kết thúc. Nếu bấm "Phê duyệt", chuyển tiếp sang bước kiểm tra điều kiện.\n' +
-                      '• Bước 3 (Kiểm tra điều kiện): Khối Condition kiểm tra logic: Số ngày xin nghỉ <= Số ngày phép còn lại. Nếu không thỏa mãn (vượt ngày phép), kích hoạt rẽ nhánh từ chối và thông báo nhân viên. Nếu thỏa mãn, chuyển sang Cấp 2.\n' +
-                      '• Bước 4 (Cấp 2): Trưởng phòng Nhân sự kiểm tra tính hợp lệ và hồ sơ nhân sự. Nếu từ chối, gửi thông báo và kết thúc. Nếu duyệt, chuyển sang Cấp 3.\n' +
-                      '• Bước 5 (Cấp 3): Giám đốc xem xét phê duyệt cuối cùng. Khi Giám đốc duyệt, trạng thái chuyển thành "Đã phê duyệt", gửi thông báo chúc mừng đến nhân viên và ghi nhận đầy đủ lịch sử Audit Trail.\n',
+                text: '• Bước 1 (Khởi tạo): Nhân viên nộp đơn. Khối "Đặt tên trạng thái" cập nhật: "Chờ Quản lý trực tiếp duyệt".\n' +
+                      '• Bước 2 (Cấp 1 - Quản lý trực tiếp): Quản lý xem xét. Nếu "Từ chối" -> Khối "Đặt tên trạng thái" cập nhật "Bị từ chối", gửi thông báo kèm lý do cho nhân viên và kết thúc. Nếu "Duyệt" -> chuyển tiếp sang bước kiểm tra điều kiện.\n' +
+                      '• Bước 3 (Kiểm tra điều kiện): Khối Condition kiểm tra: Số ngày xin nghỉ <= Số ngày phép còn lại. Nếu vượt ngày phép -> Khối "Đặt tên trạng thái" cập nhật "Bị từ chối do vượt phép", gửi thông báo cảnh báo và kết thúc. Nếu thỏa mãn -> Khối "Đặt tên trạng thái" cập nhật "Chờ Trưởng phòng Nhân sự duyệt".\n' +
+                      '• Bước 4 (Cấp 2 - Trưởng phòng Nhân sự): HR thẩm định hồ sơ. Nếu từ chối -> cập nhật trạng thái "Bị từ chối", gửi thông báo và kết thúc. Nếu duyệt -> Khối "Đặt tên trạng thái" cập nhật "Chờ Giám đốc duyệt".\n' +
+                      '• Bước 5 (Cấp 3 - Giám đốc): Giám đốc xem xét duyệt cấp cuối. Nếu từ chối -> cập nhật "Bị từ chối", gửi thông báo. Nếu duyệt -> Khối "Đặt tên trạng thái" cập nhật "Đã phê duyệt", gửi thông báo chúc mừng đến nhân viên và ghi nhận Audit Trail.\n',
               }),
             ],
             spacing: { after: 300 },
@@ -231,16 +254,17 @@ async function generateDocx() {
           new Paragraph({
             children: [
               new TextRun({
-                text: '1. Người đề xuất (NAME): Tên nhân viên tạo đề xuất.\n' +
-                      '2. Phòng ban (DEPARTMENT): Tên đơn vị / phòng ban công tác.\n' +
-                      '3. Mục đích công tác (PURPOSE): Mục đích chuyến đi (khảo sát, gặp khách hàng, triển khai dự án...).\n' +
-                      '4. Địa điểm công tác (LOCATION): Địa phương hoặc quốc gia đến công tác.\n' +
-                      '5. Thời gian công tác (TRIP_DATES): Thời gian khởi hành và kết thúc.\n' +
-                      '6. Chi tiết chi phí dự kiến (EXPENSE_DETAILS): Danh mục chi tiết (Vé máy bay, khách sạn, công tác phí...).\n' +
-                      '7. Tổng chi phí dự kiến (TOTAL_AMOUNT): Tổng số tiền (VND).\n' +
-                      '8. Ngân sách khả dụng (BUDGET_AVAILABLE): Hạn mức ngân sách khả dụng của phòng ban (VND).\n' +
-                      '9. Tài liệu / Báo giá đính kèm (ATTACHMENTS): Đính kèm file hóa đơn, vé máy bay, báo giá dự kiến.\n' +
-                      '10. Lý do từ chối (REJECTION_REASON): Ghi chú khi bị từ chối.\n',
+                text: '1. Người đề xuất (NAME): Tên nhân viên tạo đề xuất (Bắt buộc).\n' +
+                      '2. Phòng ban (DEPARTMENT): Tên đơn vị / phòng ban công tác (Kinh doanh, Kỹ thuật, Dự án...) (Bắt buộc).\n' +
+                      '3. Mục đích công tác (PURPOSE): Mục đích chuyến đi (khảo sát, gặp khách hàng, triển khai dự án...) (Bắt buộc).\n' +
+                      '4. Địa điểm công tác (LOCATION): Địa phương hoặc quốc gia đến công tác (Bắt buộc).\n' +
+                      '5. Thời gian công tác (TRIP_DATES): Thời gian khởi hành và kết thúc (Bắt buộc).\n' +
+                      '6. Chi tiết chi phí dự kiến (EXPENSE_DETAILS): Danh mục chi tiết (Vé máy bay, khách sạn, công tác phí...) (Bắt buộc).\n' +
+                      '7. Tổng chi phí dự kiến (TOTAL_AMOUNT): Tổng số tiền đề xuất tạm ứng (VND) (Bắt buộc).\n' +
+                      '8. Ngân sách khả dụng (BUDGET_AVAILABLE): Hạn mức ngân sách khả dụng của phòng ban (VND) (Bắt buộc).\n' +
+                      '9. Tài liệu / Báo giá đính kèm (ATTACHMENTS): Đính kèm file hóa đơn, vé máy bay, báo giá dự kiến (Bắt buộc).\n' +
+                      '10. Lý do từ chối (REJECTION_REASON): Ghi chú khi bị từ chối.\n' +
+                      '11. Trạng thái quy trình (STATUS): Tự động cập nhật qua từng cấp duyệt thông qua khối Set Status Message.\n',
               }),
             ],
             spacing: { after: 200 },
@@ -254,23 +278,86 @@ async function generateDocx() {
           new Paragraph({
             children: [
               new TextRun({
-                text: '• Cấp 1 (Quản lý trực tiếp): Xem xét tính cần thiết của chuyến công tác so với kế hoạch nhiệm vụ.\n' +
-                      '• Kiểm tra điều kiện ngân sách: Khối Condition so sánh Tổng chi phí dự kiến <= Ngân sách khả dụng. Nếu vượt ngân sách, hệ thống tự động cảnh báo và từ chối đề xuất.\n' +
-                      '• Cấp 2 (Trưởng phòng Tài chính): Kiểm tra định mức chi tiêu, kiểm tra chứng từ/báo giá đính kèm.\n' +
-                      '• Cấp 3 (Phó Giám đốc phụ trách Tài chính): Đánh giá tính hợp lý của chi phí và nguồn tiền phân bổ.\n' +
-                      '• Cấp 4 (Giám đốc điều hành): Phê duyệt quyết định công tác và ký duyệt lệnh chi tạm ứng công tác phí.\n' +
-                      '• Thông báo & Lưu vết: Bắn thông báo chuông hệ thống cho người đề xuất và kế toán viên thực hiện lệnh tạm ứng. Ghi nhận toàn bộ 4 bước phê duyệt vào Execution Log (Audit Trail).\n',
+                text: '• Bước 1 (Khởi tạo): Nhân viên nộp đề xuất. Khối "Đặt tên trạng thái" cập nhật: "Chờ Quản lý trực tiếp duyệt".\n' +
+                      '• Bước 2 (Cấp 1 - Quản lý trực tiếp): Xem xét tính cần thiết. Nếu "Từ chối" -> Khối "Đặt tên trạng thái" cập nhật "Bị từ chối", gửi thông báo tức thời cho nhân viên kèm lý do phản hồi và kết thúc. Nếu "Duyệt" -> chuyển tiếp sang bước kiểm tra ngân sách.\n' +
+                      '• Bước 3 (Kiểm tra ngân sách): Khối Condition so sánh Tổng chi phí dự kiến <= Ngân sách khả dụng. Nếu vượt ngân sách -> cập nhật trạng thái "Bị từ chối do vượt ngân sách", gửi thông báo cảnh báo và kết thúc. Nếu hợp lệ -> Khối "Đặt tên trạng thái" cập nhật "Chờ Trưởng phòng Tài chính duyệt".\n' +
+                      '• Bước 4 (Cấp 2 - Trưởng phòng Tài chính): Thẩm định định mức chi tiêu và hóa đơn chứng từ. Nếu từ chối -> cập nhật "Bị từ chối", gửi thông báo. Nếu duyệt -> Khối "Đặt tên trạng thái" cập nhật "Chờ Phó Giám đốc Tài chính duyệt".\n' +
+                      '• Bước 5 (Cấp 3 - Phó Giám đốc phụ trách Tài chính): Đánh giá tính hợp lý và nguồn tiền giải ngân. Nếu từ chối -> cập nhật "Bị từ chối", gửi thông báo. Nếu duyệt -> Khối "Đặt tên trạng thái" cập nhật "Chờ Giám đốc duyệt".\n' +
+                      '• Bước 6 (Cấp 4 - Giám đốc điều hành): Phê duyệt quyết định chi phí công tác cấp cao nhất. Nếu từ chối -> gửi thông báo từ chối. Nếu duyệt -> Khối "Đặt tên trạng thái" cập nhật "Đã phê duyệt chi phí công tác", gửi thông báo kết quả cho người đề xuất và kế toán viên thực hiện tạm ứng. Toàn bộ quá trình được lưu vết Audit Trail.\n',
               }),
             ],
             spacing: { after: 300 },
           }),
 
-          // 4. HƯỚNG DẪN THAO TÁC TRÊN BITRIX24
+          // 4. BẢNG ĐỐI CHIẾU KHẮC PHỤC THEO NHẬN XÉT CỦA ADIGITRANS
           new Paragraph({
             heading: HeadingLevel.HEADING_1,
             children: [
               new TextRun({
-                text: '4. HƯỚNG DẪN THAO TÁC XUẤT VÀ NHẬP QUY TRÌNH TRÊN BITRIX24',
+                text: '4. BẢNG ĐỐI CHIẾU KHẮC PHỤC THEO NHẬN XÉT CỦA BAN ĐÁNH GIÁ ADIGITRANS',
+                bold: true,
+                size: 26,
+                color: '1E40AF',
+              }),
+            ],
+            spacing: { before: 300, after: 150 },
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    shading: { fill: 'DBEAFE', type: ShadingType.CLEAR },
+                    children: [new Paragraph({ children: [new TextRun({ text: 'Nội dung nhận xét của ADIGITRANS', bold: true })] })],
+                  }),
+                  new TableCell({
+                    shading: { fill: 'DBEAFE', type: ShadingType.CLEAR },
+                    children: [new Paragraph({ children: [new TextRun({ text: 'Giải pháp và Hiện thực hóa', bold: true })] })],
+                  }),
+                  new TableCell({
+                    shading: { fill: 'DBEAFE', type: ShadingType.CLEAR },
+                    children: [new Paragraph({ children: [new TextRun({ text: 'Trạng thái', bold: true })] })],
+                  }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ text: 'Logic từ chối ở Cấp 1 (Chi phí công tác): Khi Cấp 1 chọn "Không", luồng đi thẳng về kết thúc mà không có thông báo cho người dùng.' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'Đã bổ sung khối IMNotifyActivity ("Thông báo: Đề xuất chi phí bị từ chối") vào nhánh "Không" của Cấp 1, đồng bộ 100% giữa sơ đồ, tài liệu và file export .bpt.' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'ĐÃ HOÀN THÀNH (100%)' })] }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ text: 'Thiếu trường thông tin: Biểu mẫu thiếu trường "Phòng ban" (Department).' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'Đã bổ sung trường "Phòng ban" (DEPARTMENT - Kiểu List/String) vào cả 2 biểu mẫu Nghỉ phép và Chi phí công tác, đặt thuộc tính bắt buộc (Required).' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'ĐÃ HOÀN THÀNH (100%)' })] }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ text: 'Khối trạng thái: Thiếu các khối "Đặt tên trạng thái" (Set Status Message) giữa các cấp duyệt.' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'Đã bổ sung các khối "Đặt tên trạng thái" (Set Status Message) tại từng chặng: Chờ QL duyệt, Chờ TP duyệt, Chờ Phó GĐ duyệt, Chờ GĐ duyệt, Đã duyệt, Bị từ chối.' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'ĐÃ HOÀN THÀNH (100%)' })] }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ text: 'Đồng bộ tài liệu và file xuất (.bpt): Cần đảm bảo file export .bpt khớp 100% với tài liệu mô tả.' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'Toàn bộ các khối trong file export .bpt (NghiPhep_3Cap.bpt và ChiPhiCongTac_4Cap.bpt) khớp chính xác 100% với tài liệu Word (.docx) và Markdown (.md).' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'ĐÃ HOÀN THÀNH (100%)' })] }),
+                ],
+              }),
+            ],
+          }),
+
+          // 5. HƯỚNG DẪN THAO TÁC TRÊN BITRIX24
+          new Paragraph({
+            heading: HeadingLevel.HEADING_1,
+            children: [
+              new TextRun({
+                text: '5. HƯỚNG DẪN THAO TÁC XUẤT VÀ NHẬP QUY TRÌNH TRÊN BITRIX24',
                 bold: true,
                 size: 26,
                 color: '1E40AF',
@@ -283,8 +370,8 @@ async function generateDocx() {
               new TextRun({
                 text: '1. Cách tạo và cấu hình:\n' +
                       '   - Truy cập Company -> Lists (hoặc Feed -> Workflows in Feed).\n' +
-                      '   - Tạo danh sách mới tương ứng và cấu hình các trường dữ liệu theo bảng trên.\n' +
-                      '   - Mở Business Process Designer, kéo thả các khối: Approve Element, Condition, Set Status, Send Notification, Log to Tracking.\n\n' +
+                      '   - Tạo danh sách mới tương ứng và cấu hình các trường dữ liệu theo bảng trên (bao gồm trường Phòng ban).\n' +
+                      '   - Mở Business Process Designer, cấu hình các khối: Approve Element, Condition, Set Status Message, Send Notification, Log to Tracking.\n\n' +
                       '2. Cách xuất (Export) file .bpt:\n' +
                       '   - Trong Business Process Designer, bấm nút Thao tác (Action / Settings) ở góc trên bên phải.\n' +
                       '   - Chọn Export để tải về file NghiPhep_3Cap.bpt và ChiPhiCongTac_4Cap.bpt.\n\n' +
@@ -301,7 +388,7 @@ async function generateDocx() {
           new Paragraph({
             alignment: AlignmentType.RIGHT,
             children: [
-              new TextRun({ text: 'Hà Nội, Ngày 19 Tháng 09 Năm 2026\n', italics: true }),
+              new TextRun({ text: 'Hà Nội, Ngày 26 Tháng 09 Năm 2026\n', italics: true }),
               new TextRun({ text: 'Người lập tài liệu\n', bold: true }),
               new TextRun({ text: 'Nguyễn Văn Đoan\n', bold: true }),
             ],

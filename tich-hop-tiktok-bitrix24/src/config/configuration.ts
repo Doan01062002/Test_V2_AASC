@@ -42,6 +42,6 @@ export default (): AppConfig => ({
   bitrix24: {
     webhookUrl:
       process.env.BITRIX24_WEBHOOK_URL ||
-      'https://b24-lgjau5.bitrix24.vn/rest/1/jis7d07lt4b98fqe/',
+      'https://your-domain.bitrix24.vn/rest/1/your_webhook_token_here/',
   },
 });

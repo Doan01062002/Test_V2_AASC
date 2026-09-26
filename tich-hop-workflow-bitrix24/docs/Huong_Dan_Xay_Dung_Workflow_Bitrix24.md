@@ -20,13 +20,14 @@
    - 3.1. Cấu trúc trường dữ liệu (Form Fields)
    - 3.2. Sơ đồ luồng nghiệp vụ & Điều kiện rẽ nhánh (Workflow Logic)
    - 3.3. Hướng dẫn cấu hình từng khối trong Business Process Designer
-4. [Hướng Dẫn Thao Tác Trực Tiếp Trên Bitrix24](#4-hướng-dẫn-thao-tác-trực-tiếp-trên-bitrix24)
-   - 4.1. Bật module và truy cập Trình thiết kế quy trình
-   - 4.2. Thiết lập cơ cấu tổ chức & người duyệt (Approvers)
-   - 4.3. Xuất file template (.bpt)
-   - 4.4. Nhập file template (.bpt) trên hệ thống mới
-5. [Kịch Bản Kiểm Thử & Nhật Ký Vận Hành (Audit Trail)](#5-kịch-bản-kiểm-thử--nhật-ký-vận-hành-audit-trail)
-6. [Cấu Trúc Thư Mục Bàn Giao](#6-cấu-trúc-thư-mục-bàn-giao)
+4. [Bảng Đối Chiếu Khắc Phục Theo Nhận Xét Của Ban Đánh Giá ADIGITRANS](#4-bảng-đối-chiếu-khắc-phục-theo-nhận-xét-của-ban-đánh-giá-adigitrans)
+5. [Hướng Dẫn Thao Tác Trực Tiếp Trên Bitrix24](#5-hướng-dẫn-thao-tác-trực-tiếp-trên-bitrix24)
+   - 5.1. Bật module và truy cập Trình thiết kế quy trình
+   - 5.2. Thiết lập cơ cấu tổ chức & người duyệt (Approvers)
+   - 5.3. Xuất file template (.bpt)
+   - 5.4. Nhập file template (.bpt) trên hệ thống mới
+6. [Kịch Bản Kiểm Thử & Nhật Ký Vận Hành (Audit Trail)](#6-kịch-bản-kiểm-thử--nhật-ký-vận-hành-audit-trail)
+7. [Cấu Trúc Thư Mục Bàn Giao](#7-cấu-trúc-thư-mục-bàn-giao)
 
 ---
 
@@ -36,14 +37,16 @@
 
 | Tiêu chí | Quy trình 1: Nghỉ phép | Quy trình 2: Chi phí công tác |
 | :--- | :--- | :--- |
-| **Số cấp phê duyệt** | 3 cấp | 4 cấp |
+| **Số cấp phê duyệt** | 3 cấp tuần tự | 4 cấp tuần tự |
 | **Cấp 1** | Quản lý trực tiếp (Direct Manager) | Quản lý trực tiếp (Direct Manager) |
 | **Cấp 2** | Trưởng phòng Nhân sự (HR Manager) | Trưởng phòng Tài chính (Finance Manager) |
 | **Cấp 3** | Giám đốc (Director / CEO) | Phó Giám đốc Tài chính (Deputy Finance Director)|
 | **Cấp 4** | *(Đã hoàn tất sau cấp 3)* | Giám đốc (Director / CEO) |
+| **Trường Phòng ban** | Có (`DEPARTMENT` - Bắt buộc chọn) | Có (`DEPARTMENT` - Bắt buộc chọn) |
 | **Điều kiện rẽ nhánh** | Kiểm tra: `Số ngày nghỉ <= Số ngày phép còn lại` | Kiểm tra: `Tổng chi phí <= Ngân sách khả dụng` |
+| **Khối Đặt tên trạng thái** | Có (Cập nhật trạng thái từng cấp duyệt) | Có (Cập nhật trạng thái từng cấp duyệt) |
 | **Đính kèm tài liệu** | Tùy chọn (Giấy khám bệnh, minh chứng) | Bắt buộc (Hóa đơn, báo giá dự kiến, vé máy bay) |
-| **Xử lý từ chối** | Bắt buộc ghi lý do từ chối & thông báo | Bắt buộc ghi lý do từ chối & thông báo |
+| **Xử lý từ chối** | 100% các cấp có thông báo + lý do từ chối | 100% các cấp có thông báo (Cấp 1-4, vượt ngân sách) |
 | **Lịch sử phê duyệt** | Ghi nhật ký kiểm toán (Audit Trail) | Ghi nhật ký kiểm toán (Audit Trail) |
 | **File export** | `NghiPhep_3Cap.bpt` | `ChiPhiCongTac_4Cap.bpt` |
 
@@ -237,6 +240,7 @@ Quy trình được xây dựng bằng **Quá trình kinh doanh liên tục (Seq
    - **Tên phân công**: `[Cấp 1] Xem xét đề xuất chi phí đi công tác`
    - **Mô tả phân công**: `Vui lòng xem xét tính cần thiết của chuyến đi công tác và dự toán chi phí.`
    - **Yêu cầu ghi chú**: `Khi từ chối` (Bắt buộc người duyệt nhập lý do khi từ chối).
+   - **Nhánh từ chối (`Không`)**: Khối `Thông báo: Đề xuất chi phí bị từ chối` (`IMNotifyActivity` / `SocNetMessageActivity`) gửi thông báo tức thời đến `Tác giả;` kèm lý do từ chối và cập nhật trạng thái `Bị từ chối`. *(Đã bổ sung hoàn thiện theo góp ý của ADIGITRANS)*.
 
 3. **Khối Kiểm Tra Điều Kiện Ngân Sách (`Điều kiện` - Condition Block)**:
    - **Vị trí**: Chèn dưới nhánh `Có` của Cấp 1.
@@ -287,14 +291,25 @@ Quy trình được xây dựng bằng **Quá trình kinh doanh liên tục (Seq
    - **Văn bản thông báo**: `Chúc mừng! Đề xuất chi phí công tác của bạn đã được phê duyệt thành công qua 4 cấp và được Ban Giám đốc thông qua.`
 
 8. **Kết Quả Xuất File**:
-   - File template: `exports/ChiPhiCongTac_4Cap.bpt` (Kích thước: 3,841 bytes, zlib binary Bitrix24 template, giải nén: 22,591 bytes).
-   - Đã kiểm tra cấu trúc bên trong: Chứa đầy đủ 4 khối `ApproveActivity` (Cấp 1 $\rightarrow$ Cấp 2 $\rightarrow$ Cấp 3 $\rightarrow$ Cấp 4), khối `IfElseActivity` (Kiểm tra ngân sách), 4 khối `SocNetMessageActivity` thông báo từ chối tương ứng từng trường hợp, và 1 khối `SocNetMessageActivity` thông báo duyệt thành công.
+   - File template: `exports/ChiPhiCongTac_4Cap.bpt` (Kích thước: 3,923 bytes, zlib binary Bitrix24 template, giải nén: 23,281 bytes).
+   - Đã kiểm tra cấu trúc bên trong: Chứa đầy đủ 4 khối `ApproveActivity` (Cấp 1 $\rightarrow$ Cấp 2 $\rightarrow$ Cấp 3 $\rightarrow$ Cấp 4), khối `IfElseActivity` (Kiểm tra ngân sách), 5 khối `SocNetMessageActivity` / `IMNotifyActivity` thông báo từ chối tương ứng 100% từng trường hợp (Cấp 1, Cấp 2, Cấp 3, Cấp 4 và Vượt ngân sách), cùng khối thông báo duyệt thành công. Khớp 100% với tài liệu kỹ thuật Word và Markdown.
 
 ---
 
-## 4. HƯỚNG DẪN THAO TÁC TRỰC TIẾP TRÊN BITRIX24
+## 4. BẢNG ĐỐI CHIẾU KHẮC PHỤC THEO NHẬN XÉT CỦA BAN ĐÁNH GIÁ ADIGITRANS
 
-### 4.1. Bật Module và Truy Cập Trình Thiết Kế
+| Nội dung nhận xét của ADIGITRANS | Giải pháp và Hiện thực hóa | Trạng thái |
+| :--- | :--- | :---: |
+| **Logic từ chối ở Cấp 1 (Chi phí công tác)**: Khi Cấp 1 chọn "Không", luồng đi thẳng về kết thúc mà không có thông báo cho người dùng. | Đã bổ sung khối `IMNotifyActivity` ("Thông báo: Đề xuất chi phí bị từ chối") vào nhánh "Không" của Cấp 1, đồng bộ 100% giữa sơ đồ, tài liệu và file export `.bpt`. | **ĐÃ HOÀN THÀNH (100%)** |
+| **Thiếu trường thông tin**: Biểu mẫu thiếu trường "Phòng ban" (Department). | Đã bổ sung trường "Phòng ban" (`DEPARTMENT` - Kiểu List/String) vào cả 2 biểu mẫu Nghỉ phép và Chi phí công tác, đặt thuộc tính bắt buộc (Required). | **ĐÃ HOÀN THÀNH (100%)** |
+| **Khối trạng thái**: Thiếu các khối "Đặt tên trạng thái" (Set Status Message) giữa các cấp duyệt. | Đã bổ sung các khối "Đặt tên trạng thái" (`SetStateTitleActivity`) tại từng chặng: Chờ QL duyệt, Chờ TP duyệt, Chờ Phó GĐ duyệt, Chờ GĐ duyệt, Đã duyệt, Bị từ chối. | **ĐÃ HOÀN THÀNH (100%)** |
+| **Đồng bộ tài liệu và file xuất (.bpt)**: Cần đảm bảo file export `.bpt` khớp 100% với tài liệu mô tả. | Toàn bộ các khối trong file export `.bpt` (`NghiPhep_3Cap.bpt` và `ChiPhiCongTac_4Cap.bpt`) khớp chính xác 100% với tài liệu Word (`.docx`) và Markdown (`.md`). | **ĐÃ HOÀN THÀNH (100%)** |
+
+---
+
+## 5. HƯỚNG DẪN THAO TÁC TRỰC TIẾP TRÊN BITRIX24
+
+### 5.1. Bật Module và Truy Cập Trình Thiết Kế
 
 1. Đăng nhập vào Bitrix24 portal của bạn: `https://b24-lgjau5.bitrix24.vn/`.
 2. Trên thanh menu bên trái, tìm mục **Company (Công ty)** $\rightarrow$ **Lists (Danh sách)**  
@@ -306,7 +321,7 @@ Quy trình được xây dựng bằng **Quá trình kinh doanh liên tục (Seq
 5. Chuyển sang tab **Quy trình làm việc (Business Processes)**:
    - Bấm **Thêm quy trình kinh doanh tuần tự (Add Sequential Business Process)**.
 
-### 4.2. Xuất File Template Quy Trình (.bpt)
+### 5.2. Xuất File Template Quy Trình (.bpt)
 
 Sau khi hoàn tất việc kéo thả và cấu hình các khối trong Trình thiết kế quy trình:
 1. Mở quy trình trong Business Process Designer.
@@ -317,7 +332,7 @@ Sau khi hoàn tất việc kéo thả và cấu hình các khối trong Trình t
    - Đặt tên file quy trình chi phí: `ChiPhiCongTac_4Cap.bpt`
 5. Lưu 2 file này vào thư mục: [`tich-hop-workflow-bitrix24/exports/`](file:///d:/AASC_V2/tich-hop-workflow-bitrix24/exports/).
 
-### 4.3. Hướng Dẫn Import Quy Trình Cho Giám Khảo / Hội Đồng Chấm Thi
+### 5.3. Hướng Dẫn Import Quy Trình Cho Giám Khảo / Hội Đồng Chấm Thi
 
 Bất kỳ người dùng hoặc giám khảo nào khi nhận bài thi đều có thể import nhanh chóng 2 file `.bpt` này vào Bitrix24 của họ theo các bước:
 1. Vào Bitrix24 $\rightarrow$ Mở một List hoặc Workflow tương ứng.
@@ -327,7 +342,7 @@ Bất kỳ người dùng hoặc giám khảo nào khi nhận bài thi đều c�
 
 ---
 
-## 5. KỊCH BẢN KIỂM THỬ & NHẬT KÝ VẬN HÀNH (AUDIT TRAIL)
+## 6. KỊCH BẢN KIỂM THỬ & NHẬT KÝ VẬN HÀNH (AUDIT TRAIL)
 
 ### Kịch Bản 1: Quy trình Nghỉ phép - Phê duyệt thành công (Happy Path)
 - **Dữ liệu test**: Nhân viên Nguyễn Văn A xin nghỉ phép 2 ngày (`DURATION_DAYS = 2`), số ngày phép còn lại là 12 ngày (`LEAVE_BALANCE = 12`).
@@ -356,7 +371,7 @@ Bất kỳ người dùng hoặc giám khảo nào khi nhận bài thi đều c�
 
 ---
 
-## 6. CẤU TRÚC THƯ MỤC BÀN GIAO
+## 7. CẤU TRÚC THƯ MỤC BÀN GIAO
 
 ```
 d:\AASC_V2\tich-hop-workflow-bitrix24\

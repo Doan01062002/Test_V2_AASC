@@ -11,6 +11,9 @@ import { LeadEntity } from '../../database/entities/lead.entity';
 import { ConfigurationEntity } from '../../database/entities/configuration.entity';
 import { DEFAULT_FIELD_MAPPING } from '../../database/seeds/initial-config.seed';
 
+import { Optional } from '@nestjs/common';
+import { RedisCacheService } from '../../cache/redis-cache.service';
+
 @Processor(TIKTOK_LEADS_QUEUE, {
   limiter: {
     max: 2,
@@ -30,6 +33,8 @@ export class TikTokLeadConsumer extends WorkerHost {
     private readonly configRepository: Repository<ConfigurationEntity>,
     @InjectQueue(TIKTOK_LEADS_DLQ)
     private readonly dlqQueue: Queue,
+    @Optional()
+    private readonly cacheService?: RedisCacheService,
   ) {
     super();
   }
@@ -163,6 +168,10 @@ export class TikTokLeadConsumer extends WorkerHost {
       lead.status = createdDeals.length > 0 ? 'converted' : 'processed';
 
       await this.leadRepository.save(lead);
+
+      if (this.cacheService) {
+        await this.cacheService.delPattern('analytics:*');
+      }
 
       this.logger.log(
         `Completed processing lead ${lead.id} (Bitrix24: ${lead.bitrix24Id}, Deals: ${createdDeals.length}, Quality: ${lead.qualityScore})`,

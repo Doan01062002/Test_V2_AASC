@@ -23,7 +23,11 @@ import { seedInitialConfig } from './seeds/initial-config.seed';
           'tiktok_bitrix24',
         ),
         entities: [LeadEntity, DealEntity, ConfigurationEntity],
-        synchronize: true, // Auto-create schema for development/testing
+        migrations: [__dirname + '/migrations/*{.ts,.js}'],
+        migrationsRun: configService.get<string>('nodeEnv') === 'production',
+        synchronize:
+          configService.get<string>('nodeEnv') === 'test' ||
+          configService.get<boolean>('database.synchronize', false),
         logging: false,
       }),
     }),

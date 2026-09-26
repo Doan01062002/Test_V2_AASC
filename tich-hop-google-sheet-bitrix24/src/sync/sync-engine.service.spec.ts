@@ -27,7 +27,10 @@ describe('SyncEngineService (Core Test Cases TC1 - TC5)', () => {
     mockBitrix24 = {
       createLead: jest.fn(),
       updateLead: jest.fn(),
+      getLead: jest.fn(),
       findLeadByEmailOrPhone: jest.fn(),
+      batchExecute: jest.fn(),
+      buildBatchCommand: jest.fn((method, params) => `${method}?mock_params`),
     };
 
     mockSyncLogRepo = {
@@ -414,6 +417,81 @@ describe('SyncEngineService (Core Test Cases TC1 - TC5)', () => {
       expect(summary.status).toBe(SyncJobStatus.FAILED);
       expect(summary.errorCount).toBe(1);
       expect(summary.errors[0].error).toContain('Google Spreadsheet ID is not configured');
+    });
+  });
+
+  describe('TC6 - Batch Sync Processing (Large Datasets > 50 rows & useBatch)', () => {
+    it('should process rows using batchExecute when useBatch option is true', async () => {
+      mockGoogleSheets.readSheetData.mockResolvedValue({
+        headers: ['Tên khách hàng', 'Email', 'Trạng thái đồng bộ', 'Lead ID Bitrix24', 'Thời gian đồng bộ cuối', 'Thông báo lỗi'],
+        rows: [
+          {
+            rowNumber: 2,
+            data: { 'Tên khách hàng': 'Batch User 1', 'Email': 'user1@batch.com' },
+            rawValues: ['Batch User 1', 'user1@batch.com'],
+          },
+          {
+            rowNumber: 3,
+            data: { 'Tên khách hàng': 'Batch User 2', 'Email': 'user2@batch.com', 'Lead ID Bitrix24': '888' },
+            rawValues: ['Batch User 2', 'user2@batch.com', '', '888'],
+          },
+        ],
+        trackingIndices: { syncStatusCol: 2, leadIdCol: 3, lastSyncedAtCol: 4, errorMessageCol: 5 },
+      });
+
+      mockBitrix24.findLeadByEmailOrPhone.mockResolvedValue(null);
+      mockBitrix24.getLead.mockResolvedValue({ ID: '888', TITLE: 'Batch User 2' });
+      mockBitrix24.batchExecute.mockResolvedValue({
+        create_2: 901,
+        update_3: true,
+      });
+
+      const summary = await service.executeSync({ useBatch: true });
+
+      expect(summary.status).toBe(SyncJobStatus.SUCCESS);
+      expect(summary.createdCount).toBe(1);
+      expect(summary.updatedCount).toBe(1);
+      expect(mockBitrix24.batchExecute).toHaveBeenCalled();
+      expect(mockGoogleSheets.batchUpdateTracking).toHaveBeenCalledWith(
+        'test-spreadsheet-id',
+        'Sheet1',
+        expect.arrayContaining([
+          expect.objectContaining({ rowNumber: 2, leadId: 901, syncStatus: 'Đã đồng bộ' }),
+          expect.objectContaining({ rowNumber: 3, leadId: 888, syncStatus: 'Đã đồng bộ' }),
+        ]),
+        expect.any(Object),
+      );
+    });
+
+    it('should automatically use batchExecute when rows count exceeds batchThreshold (50 rows)', async () => {
+      const generatedRows = Array.from({ length: 55 }, (_, i) => ({
+        rowNumber: i + 2,
+        data: { 'Tên khách hàng': `Large Batch ${i}`, 'Email': `large_${i}@batch.com` },
+        rawValues: [`Large Batch ${i}`, `large_${i}@batch.com`],
+      }));
+
+      mockGoogleSheets.readSheetData.mockResolvedValue({
+        headers: ['Tên khách hàng', 'Email'],
+        rows: generatedRows,
+        trackingIndices: { syncStatusCol: 2, leadIdCol: 3, lastSyncedAtCol: 4, errorMessageCol: 5 },
+      });
+
+      mockBitrix24.findLeadByEmailOrPhone.mockResolvedValue(null);
+      mockBitrix24.batchExecute.mockImplementation((cmds: Record<string, string>) => {
+        const res: Record<string, any> = {};
+        for (const key of Object.keys(cmds)) {
+          res[key] = 1000 + Math.floor(Math.random() * 500);
+        }
+        return Promise.resolve(res);
+      });
+
+      const summary = await service.executeSync();
+
+      expect(summary.totalRows).toBe(55);
+      expect(summary.createdCount).toBe(55);
+      // Because Bitrix24 batch limit is 50, 55 rows should trigger 2 batchExecute calls (50 + 5)
+      expect(mockBitrix24.batchExecute).toHaveBeenCalledTimes(2);
+      expect(mockGoogleSheets.batchUpdateTracking).toHaveBeenCalledTimes(1);
     });
   });
 });

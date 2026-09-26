@@ -203,5 +203,25 @@ describe('Bitrix24Service', () => {
         cmd2: true,
       });
     });
+
+    it('should build formatted batch command string with nested objects and arrays', () => {
+      const cmd = service.buildBatchCommand('crm.lead.add', {
+        fields: {
+          TITLE: 'Batch Test Lead',
+          EMAIL: [{ VALUE: 'batch@example.com', VALUE_TYPE: 'WORK' }],
+        },
+        params: { REGISTER_SONET_EVENT: 'Y' },
+      });
+
+      expect(cmd).toContain('crm.lead.add?');
+      expect(cmd).toContain('fields%5BTITLE%5D=Batch%20Test%20Lead');
+      expect(cmd).toContain('fields%5BEMAIL%5D%5B0%5D%5BVALUE%5D=batch%40example.com');
+      expect(cmd).toContain('params%5BREGISTER_SONET_EVENT%5D=Y');
+    });
+
+    it('should return method name directly if params is empty', () => {
+      const cmd = service.buildBatchCommand('crm.lead.list', {});
+      expect(cmd).toBe('crm.lead.list');
+    });
   });
 });

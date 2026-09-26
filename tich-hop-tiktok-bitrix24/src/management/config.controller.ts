@@ -8,6 +8,10 @@ import {
   DEFAULT_DEAL_RULES,
 } from '../database/seeds/initial-config.seed';
 
+import { Optional } from '@nestjs/common';
+import { RedisCacheService } from '../cache/redis-cache.service';
+import { UpdateFieldMappingsDto, UpdateDealRulesDto } from './dto/update-config.dto';
+
 @ApiTags('Management')
 @Controller('api/v1/config')
 export class ConfigController {
@@ -16,22 +20,35 @@ export class ConfigController {
   constructor(
     @InjectRepository(ConfigurationEntity)
     private readonly configRepository: Repository<ConfigurationEntity>,
+    @Optional()
+    private readonly cacheService?: RedisCacheService,
   ) {}
 
   @Get('mappings')
   @ApiOperation({ summary: 'Get current TikTok-to-Bitrix24 field mapping configuration' })
   @ApiResponse({ status: 200, description: 'Field mapping configuration' })
   async getFieldMappings() {
+    const cacheKey = 'config:field_mapping';
+    if (this.cacheService) {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) return cached;
+    }
+
     const config = await this.configRepository.findOne({
       where: { key: 'field_mapping' },
     });
-    return config?.value || DEFAULT_FIELD_MAPPING;
+    const result = config?.value || DEFAULT_FIELD_MAPPING;
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 3600);
+    }
+    return result;
   }
 
   @Put('mappings')
   @ApiOperation({ summary: 'Update TikTok-to-Bitrix24 field mapping configuration' })
   @ApiResponse({ status: 200, description: 'Updated field mappings' })
-  async updateFieldMappings(@Body() mappings: Record<string, string>) {
+  async updateFieldMappings(@Body() body: UpdateFieldMappingsDto | Record<string, string>) {
+    const mappings = (body as UpdateFieldMappingsDto).mappings || body;
     let config = await this.configRepository.findOne({
       where: { key: 'field_mapping' },
     });
@@ -44,6 +61,11 @@ export class ConfigController {
       config.value = mappings;
     }
     await this.configRepository.save(config);
+
+    if (this.cacheService) {
+      await this.cacheService.del('config:field_mapping');
+    }
+
     return {
       success: true,
       message: 'Field mapping updated successfully',
@@ -55,16 +77,27 @@ export class ConfigController {
   @ApiOperation({ summary: 'Get Deal conversion rules' })
   @ApiResponse({ status: 200, description: 'Deal conversion rules list' })
   async getDealRules() {
+    const cacheKey = 'config:deal_rules';
+    if (this.cacheService) {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) return cached;
+    }
+
     const config = await this.configRepository.findOne({
       where: { key: 'deal_rules' },
     });
-    return config?.value || DEFAULT_DEAL_RULES;
+    const result = config?.value || DEFAULT_DEAL_RULES;
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 3600);
+    }
+    return result;
   }
 
   @Put('rules')
   @ApiOperation({ summary: 'Update Deal conversion rules' })
   @ApiResponse({ status: 200, description: 'Updated deal conversion rules' })
-  async updateDealRules(@Body() rules: any[]) {
+  async updateDealRules(@Body() body: UpdateDealRulesDto | any[]) {
+    const rules = Array.isArray(body) ? body : (body as UpdateDealRulesDto).rules || body;
     let config = await this.configRepository.findOne({
       where: { key: 'deal_rules' },
     });
@@ -77,6 +110,11 @@ export class ConfigController {
       config.value = rules;
     }
     await this.configRepository.save(config);
+
+    if (this.cacheService) {
+      await this.cacheService.del('config:deal_rules');
+    }
+
     return {
       success: true,
       message: 'Deal conversion rules updated successfully',

@@ -4,6 +4,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DealEntity } from '../database/entities/deal.entity';
 
+import { GetDealsQueryDto } from './dto/get-deals.dto';
+
 @ApiTags('Management')
 @Controller('api/v1/deals')
 export class DealsController {
@@ -14,24 +16,32 @@ export class DealsController {
 
   @Get()
   @ApiOperation({ summary: 'Get list of deals with filtering' })
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  @ApiQuery({
-    name: 'status',
-    required: false,
-    type: String,
-    description: "'open' for active deals, or specific stage name",
-  })
-  @ApiQuery({ name: 'assigned_to', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Return paginated deals' })
   async getDeals(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-    @Query('status') status?: string,
-    @Query('assigned_to') assignedTo?: string,
+    @Query() query?: GetDealsQueryDto | number,
+    legacyLimit?: number,
+    legacyStatus?: string,
+    legacyAssignedTo?: string,
   ) {
-    const pageNum = Math.max(1, Number(page) || 1);
-    const limitNum = Math.min(100, Math.max(1, Number(limit) || 10));
+    let page = 1;
+    let limit = 10;
+    let status: string | undefined;
+    let assignedTo: string | undefined;
+
+    if (typeof query === 'number' || typeof (query as any) === 'string') {
+      page = Number(query) || 1;
+      limit = Number(legacyLimit) || 10;
+      status = legacyStatus;
+      assignedTo = legacyAssignedTo;
+    } else if (query) {
+      page = Number(query.page) || 1;
+      limit = Number(query.limit) || 10;
+      status = query.status;
+      assignedTo = query.assigned_to;
+    }
+
+    const pageNum = Math.max(1, page);
+    const limitNum = Math.min(100, Math.max(1, limit));
 
     const qb = this.dealRepository.createQueryBuilder('deal')
       .leftJoinAndSelect('deal.lead', 'lead');

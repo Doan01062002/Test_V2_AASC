@@ -3,6 +3,8 @@ import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
 import { AnalyticsService } from './analytics.service';
 
+import { ExportReportQueryDto } from './dto/export-report.dto';
+
 @ApiTags('Analytics')
 @Controller('api/v1')
 export class AnalyticsController {
@@ -33,35 +35,38 @@ export class AnalyticsController {
   @ApiOperation({
     summary: 'Export lead and conversion report in CSV (with UTF-8 BOM) or JSON format',
   })
-  @ApiQuery({
-    name: 'format',
-    required: false,
-    enum: ['csv', 'json'],
-    example: 'csv',
-  })
-  @ApiQuery({
-    name: 'date_range',
-    required: false,
-    enum: ['7d', '30d', '90d', 'all'],
-    example: '30d',
-  })
   @ApiResponse({ status: 200, description: 'Download CSV file or get JSON report' })
   async exportReport(
-    @Query('format') format: string = 'csv',
-    @Query('date_range') dateRange: string = '30d',
-    @Res() res: Response,
+    @Query() query: ExportReportQueryDto | string,
+    @Res() res: Response | string,
+    legacyDateRangeOrRes?: string | Response,
+    legacyRes?: Response,
   ) {
+    let format = 'csv';
+    let dateRange = '30d';
+    let responseObj: Response;
+
+    if (typeof query === 'string') {
+      format = query;
+      dateRange = typeof res === 'string' ? res : '30d';
+      responseObj = (legacyDateRangeOrRes as Response) || legacyRes || (res as Response);
+    } else {
+      format = String(query?.format || 'csv');
+      dateRange = String(query?.date_range || '30d');
+      responseObj = res as Response;
+    }
+
     if (format.toLowerCase() === 'json') {
       const jsonReport = await this.analyticsService.exportJsonReport(dateRange);
-      return res.status(HttpStatus.OK).json(jsonReport);
+      return responseObj.status(HttpStatus.OK).json(jsonReport);
     }
 
     const csvData = await this.analyticsService.exportCsv(dateRange);
     const filename = `tiktok-leads-report-${dateRange}.csv`;
 
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    return res.status(HttpStatus.OK).send(csvData);
+    responseObj.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    responseObj.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return responseObj.status(HttpStatus.OK).send(csvData);
   }
 
   @Get('reports/scheduled-summary')

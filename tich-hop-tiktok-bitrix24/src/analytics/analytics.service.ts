@@ -5,6 +5,8 @@ import { LeadEntity } from '../database/entities/lead.entity';
 import { DealEntity } from '../database/entities/deal.entity';
 import { Bitrix24Service } from '../bitrix24/bitrix24.service';
 
+import { RedisCacheService } from '../cache/redis-cache.service';
+
 export interface QualityDistribution {
   Hot: number;
   Warm: number;
@@ -46,9 +48,24 @@ export class AnalyticsService {
     private readonly dealRepository: Repository<DealEntity>,
     @Optional()
     private readonly bitrix24Service?: Bitrix24Service,
+    @Optional()
+    private readonly cacheService?: RedisCacheService,
   ) {}
 
+  async invalidateAnalyticsCache(): Promise<void> {
+    if (this.cacheService) {
+      await this.cacheService.delPattern('analytics:*');
+      this.logger.debug('Analytics cache invalidated');
+    }
+  }
+
   async getConversionRates(): Promise<ConversionRatesResult> {
+    const cacheKey = 'analytics:conversion_rates';
+    if (this.cacheService) {
+      const cached = await this.cacheService.get<ConversionRatesResult>(cacheKey);
+      if (cached) return cached;
+    }
+
     const leads = await this.leadRepository.find();
     const deals = await this.dealRepository.find();
 
@@ -95,7 +112,7 @@ export class AnalyticsService {
       }
     }
 
-    return {
+    const result: ConversionRatesResult = {
       total_leads: totalLeads,
       converted_leads: convertedLeads,
       total_deals: totalDeals,
@@ -105,9 +122,21 @@ export class AnalyticsService {
       overall_conversion_rate: overallRate,
       quality_distribution: qualityDistribution,
     };
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, result, 300);
+    }
+
+    return result;
   }
 
   async getCampaignPerformance(): Promise<CampaignPerformanceItem[]> {
+    const cacheKey = 'analytics:campaign_performance';
+    if (this.cacheService) {
+      const cached = await this.cacheService.get<CampaignPerformanceItem[]>(cacheKey);
+      if (cached) return cached;
+    }
+
     const leads = await this.leadRepository.find({
       relations: ['deals'],
     });
@@ -192,6 +221,10 @@ export class AnalyticsService {
         roi,
         conversion_rate: conversionRate,
       });
+    }
+
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, performanceList, 300);
     }
 
     return performanceList;

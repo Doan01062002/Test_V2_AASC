@@ -13,19 +13,24 @@
 ## 1. Tóm Tắt 2 Quy Trình
 
 ### 1.1. Quy Trình Nghỉ Phép (3 Cấp Phê Duyệt)
+- **Trường thông tin**: Đầy đủ các trường cơ bản và trường **Phòng ban (`DEPARTMENT`)** bắt buộc.
+- **Khối trạng thái**: Tích hợp các khối **Đặt tên trạng thái (Set Status Message)** cập nhật trạng thái rõ ràng qua từng cấp.
 - **Cấp 1**: Quản lý trực tiếp (Direct Manager) kiểm tra tính cần thiết.
 - **Cấp 2**: Trưởng phòng Nhân sự (HR Manager) kiểm tra hồ sơ.
 - **Rẽ nhánh điều kiện**: Kiểm tra `Số ngày xin nghỉ <= Số ngày phép còn lại`. Nếu vượt quá ngày phép $\rightarrow$ Tự động rẽ nhánh từ chối và thông báo lý do.
 - **Cấp 3**: Giám đốc (Director / CEO) phê duyệt cuối cùng.
-- **Thông báo & Lịch sử**: Gửi tin nhắn chuông thông báo kết quả cho nhân viên và ghi nhận đầy đủ Execution Log (Audit Trail).
+- **Thông báo & Lịch sử**: Gửi tin nhắn thông báo kết quả cho nhân viên ở cả trường hợp phê duyệt hoặc từ chối ở bất kỳ cấp nào; ghi nhận đầy đủ Execution Log (Audit Trail).
 
 ### 1.2. Quy Trình Chi Phí Công Tác (4 Cấp Phê Duyệt)
-- **Cấp 1**: Quản lý trực tiếp (Direct Manager) xem xét sự cần thiết.
+- **Trường thông tin**: Đầy đủ các trường chi phí, tạm ứng, báo giá và trường **Phòng ban (`DEPARTMENT`)** bắt buộc.
+- **Khối trạng thái**: Tích hợp các khối **Đặt tên trạng thái (Set Status Message)** cập nhật trạng thái tương ứng từng cấp.
+- **Cấp 1**: Quản lý trực tiếp (Direct Manager) xem xét sự cần thiết. Nếu từ chối $\rightarrow$ Gửi thông báo tức thời cho nhân viên kèm lý do.
+- **Rẽ nhánh điều kiện**: Kiểm tra `Tổng chi phí <= Ngân sách khả dụng`. Nếu vượt ngân sách $\rightarrow$ Rẽ nhánh từ chối và cảnh báo.
 - **Cấp 2**: Trưởng phòng Tài chính (Finance Manager) kiểm tra tính khả dụng của ngân sách.
-- **Rẽ nhánh điều kiện**: Kiểm tra `Tổng chi phí <= Ngân sách khả dụng`. Nếu vượt ngân sách $\rightarrow$ Rẽ nhánh từ chối.
 - **Cấp 3**: Phó Giám đốc phụ trách Tài chính (Deputy Finance Director) xem xét tính hợp lý.
 - **Cấp 4**: Giám đốc (Director / CEO) phê duyệt lệnh chi tạm ứng.
-- **Đính kèm chứng từ**: Hỗ trợ đính kèm hóa đơn, báo giá dự kiến, vé máy bay.
+- **Đính kèm chứng từ**: Bắt buộc đính kèm hóa đơn, báo giá dự kiến, vé máy bay.
+- **Thông báo từ chối**: Đảm bảo 100% các cấp (Cấp 1, Cấp 2, Cấp 3, Cấp 4 và Vượt ngân sách) đều có khối gửi thông báo cho nhân viên.
 
 ---
 
